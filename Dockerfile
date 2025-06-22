@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_ROOT_USER_ACTION=ignore \
+    POETRY_VERSION=1.8.2
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends build-essential libgl1 git \
+ && pip install --no-cache-dir poetry==$POETRY_VERSION
+
+WORKDIR /code
+COPY pyproject.toml poetry.lock* /code/
+RUN poetry config virtualenvs.create false \
+ && poetry install --no-interaction --no-ansi
+
+COPY . /code
+CMD ["gunicorn", "config.wsgi:application", "-b", "0.0.0.0:8000"]
