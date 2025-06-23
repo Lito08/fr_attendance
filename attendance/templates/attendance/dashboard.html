@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+
+<h1 class="mb-4">Attendance Dashboard</h1>
+
+<!-- 7-day bar chart -->
+<canvas id="bar" class="mb-5" style="max-width:700px;height:320px"></canvas>
+
+<h2 class="h5 mb-3">Logs for today</h2>
+<div class="table-responsive">
+<table class="table table-striped align-middle">
+  <thead class="table-light"><tr><th>User</th><th>Time</th></tr></thead>
+  <tbody>
+  {% for log in logs_today %}
+    <tr><td>{{ log.student.user.username }}</td><td>{{ log.timestamp|date:"H:i:s" }}</td></tr>
+  {% empty %}
+    <tr><td colspan="2" class="text-center">No logs yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<a href="{% url 'export_today_csv' %}" class="btn btn-outline-primary mt-3">
+  Export Today CSV
+</a>
+
+<script src="{% static 'attendance/js/chart.umd.js' %}"></script>
+<script>
+const labels={{ labels|safe }};
+const values={{ values|safe }};
+new Chart(document.getElementById('bar'),{
+  type:'bar',
+  data:{labels:labels,datasets:[{label:'Logs per day',data:values}]},
+  options:{responsive:true,scales:{y:{beginAtZero:true,precision:0}}}
+});
+</script>
+{% endblock %}

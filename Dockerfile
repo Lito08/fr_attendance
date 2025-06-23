@@ -1,17 +1,31 @@
+# ────────────────────────────────────────────────────
+# Dockerfile  –  Face-Rec Attendance (no Poetry)
+# ────────────────────────────────────────────────────
 FROM python:3.11-slim
 
-ENV PYTHONUNBUFFERED=1 \
-    PIP_ROOT_USER_ACTION=ignore \
-    POETRY_VERSION=1.8.2
-
+# ── Basic OS packages you need for dlib / OpenCV builds
 RUN apt-get update \
- && apt-get install -y --no-install-recommends build-essential libgl1 git \
- && pip install --no-cache-dir poetry==$POETRY_VERSION
+ && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        libgl1 \
+        git \
+        nodejs \
+        npm \
+        libboost-python-dev \
+        libboost-system-dev \
+ && rm -rf /var/lib/apt/lists/*               # keep the image small
 
+# ── Work directory inside the image
 WORKDIR /code
-COPY pyproject.toml poetry.lock* /code/
-RUN poetry config virtualenvs.create false \
- && poetry install --no-interaction --no-ansi
 
+# ── Python dependencies
+COPY requirements.txt /code/
+RUN pip install --no-cache-dir --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
+
+# ── Copy the rest of your project
 COPY . /code
+
+# ── Gunicorn entry-point (you can switch to Django’s runserver in dev)
 CMD ["gunicorn", "config.wsgi:application", "-b", "0.0.0.0:8000"]

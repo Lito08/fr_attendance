@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Enrol{% endblock %}
+{% block content %}
+<h1 class="mb-4">Enrol Your Face</h1>
+
+{% if error %}
+  <div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="vstack gap-3">
+  {% csrf_token %}
+  <input class="form-control" type="file" name="photo" accept="image/*" required>
+  <button class="btn btn-primary w-auto" type="submit">Upload & Save</button>
+</form>
+{% endblock %}
