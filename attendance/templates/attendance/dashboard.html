@@ -2,38 +2,43 @@
 {% load static %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
+<h1 class="mb-4">Attendance dashboard</h1>
 
-<h1 class="mb-4">Attendance Dashboard</h1>
+<div class="row g-4">
+  <div class="col-lg-6">
+    <canvas id="chart" height="200"></canvas>
+  </div>
 
-<!-- 7-day bar chart -->
-<canvas id="bar" class="mb-5" style="max-width:700px;height:320px"></canvas>
-
-<h2 class="h5 mb-3">Logs for today</h2>
-<div class="table-responsive">
-<table class="table table-striped align-middle">
-  <thead class="table-light"><tr><th>User</th><th>Time</th></tr></thead>
-  <tbody>
-  {% for log in logs_today %}
-    <tr><td>{{ log.student.user.username }}</td><td>{{ log.timestamp|date:"H:i:s" }}</td></tr>
-  {% empty %}
-    <tr><td colspan="2" class="text-center">No logs yet.</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
+  <div class="col-lg-6">
+    <table id="logTable" class="table table-striped table-sm align-middle">
+      <thead class="table-primary">
+        <tr><th>Username</th><th>Timestamp</th><th>Latency (ms)</th><th>Verified</th></tr>
+      </thead>
+      <tbody>
+        {% for log in logs_today %}
+          <tr>
+            <td>{{ log.student.user.username }}</td>
+            <td>{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+            <td>{{ log.latency_ms }}</td>
+            <td>{{ log.verified|yesno:"✅,❌" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <a href="{% url 'export_today_csv' %}" class="btn btn-outline-secondary btn-sm mt-2">Download CSV</a>
+  </div>
 </div>
 
-<a href="{% url 'export_today_csv' %}" class="btn btn-outline-primary mt-3">
-  Export Today CSV
-</a>
-
+<!-- Chart & DataTable scripts -->
 <script src="{% static 'attendance/js/chart.umd.js' %}"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.0/dist/umd/simple-datatables.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.0/dist/style.css" rel="stylesheet">
+<script defer src="{% static 'attendance/js/dashboard_table.js' %}"></script>
 <script>
-const labels={{ labels|safe }};
-const values={{ values|safe }};
-new Chart(document.getElementById('bar'),{
-  type:'bar',
-  data:{labels:labels,datasets:[{label:'Logs per day',data:values}]},
-  options:{responsive:true,scales:{y:{beginAtZero:true,precision:0}}}
+const ctx=document.getElementById("chart");
+new Chart(ctx,{type:"bar",
+  data:{labels:{{ labels|safe }},datasets:[{data:{{ values|safe }},label:"Scans",borderWidth:1}]},
+  options:{scales:{y:{beginAtZero:true}}}
 });
 </script>
 {% endblock %}

@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Log in{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-md-4">
+
     <h1 class="h4 text-center mb-4">Sign in</h1>
 
     {% if form.errors %}
@@ -11,10 +13,31 @@
 
     <form method="post" class="vstack gap-3">
       {% csrf_token %}
-      {{ form.username.label_tag }} {{ form.username }}
-      {{ form.password.label_tag }} {{ form.password }}
-      <button class="btn btn-primary w-100" type="submit">Sign in</button>
+
+      <div class="form-floating">
+        <input type="text"
+               name="username"
+               id="id_username"
+               class="form-control"
+               placeholder="Username"
+               value="{{ form.username.value|default_if_none:'' }}"
+               required autofocus>
+        <label for="id_username">Username</label>
+      </div>
+
+      <div class="form-floating">
+        <input type="password"
+               name="password"
+               id="id_password"
+               class="form-control"
+               placeholder="Password"
+               required>
+        <label for="id_password">Password</label>
+      </div>
+
+      <button class="btn btn-primary w-100">Sign in</button>
     </form>
+
   </div>
 </div>
 {% endblock %}

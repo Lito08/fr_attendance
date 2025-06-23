@@ -1,11 +1,32 @@
 {
   "dependencies": {
+    "@vladmandic/face-api": "^1.7.15",
     "daisyui": "^5.0.43",
+    "esbuild": "^0.25.5",
+    "face-api.js": "^0.22.2",
     "flowbite": "^3.1.2"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.10"
-  }
+  },
+  "name": "fr_attendance",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lito08/fr_attendance.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Lito08/fr_attendance/issues"
+  },
+  "homepage": "https://github.com/Lito08/fr_attendance#readme",
+  "description": ""
 }

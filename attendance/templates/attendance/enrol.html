@@ -1,15 +1,28 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Enrol{% endblock %}
+
 {% block content %}
-<h1 class="mb-4">Enrol Your Face</h1>
+<h1 class="mb-4">Enrol your face</h1>
 
-{% if error %}
-  <div class="alert alert-danger">{{ error }}</div>
-{% endif %}
+<div class="d-flex flex-column align-items-center gap-3">
+  <video id="cam" autoplay playsinline
+         class="border rounded w-100 w-md-50"></video>
+  <h5 id="prompt" class="text-primary mt-3"></h5>
+  <svg width="250" height="250" id="guide">
+    <!-- simple circle guide -->
+    <circle cx="125" cy="125" r="120" fill="none" stroke="#0d6efd"
+            stroke-width="4" stroke-dasharray="10 8"></circle>
+  </svg>
 
-<form method="post" enctype="multipart/form-data" class="vstack gap-3">
-  {% csrf_token %}
-  <input class="form-control" type="file" name="photo" accept="image/*" required>
-  <button class="btn btn-primary w-auto" type="submit">Upload & Save</button>
-</form>
+  <button id="startBtn"
+          data-api="{% url 'enrol_api' %}"
+          class="btn btn-primary">
+    Start capture
+  </button>
+  
+  <p id="status" class="fw-semibold text-center mt-2"></p>
+</div>
+
+<script defer src="{% static 'attendance/js/enrol_auto.js' %}"></script>
 {% endblock %}

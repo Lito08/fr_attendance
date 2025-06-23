@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">My profile</h1>
+
+{% if student %}
+  <p class="text-success">✅ You have a face template saved.</p>
+{% else %}
+  <p class="text-danger">⚠️  You have not enrolled yet.</p>
+{% endif %}
+
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+<h5 class="mt-4">Re-enrol / update template</h5>
+<form method="post" enctype="multipart/form-data" class="vstack gap-3">
+  {% csrf_token %}
+  <input type="file" name="photo" accept="image/*" class="form-control" required>
+  <button class="btn btn-primary w-auto">Upload new photo</button>
+</form>
+{% endblock %}

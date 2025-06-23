@@ -1,51 +1,64 @@
-"""
-optimise.py – Optuna search for best distance threshold τ
-Run: docker compose exec web python experiments/optimise.py /code/data/validation
-"""
-import pathlib, sys, os, json, numpy as np, optuna, face_recognition, time
+#!/usr/bin/env python
+import json, time, cv2, optuna, numpy as np, face_recognition, sys
+from pathlib import Path
 
-# ── Django setup ──────────────────────────────────────────────────────────────
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-sys.path.append(str(ROOT))
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
-import django; django.setup()
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = Path(sys.argv[1])  # e.g. /code/data/validation
 
-from attendance.models import Student
+# ---------------------------------------------------------------------------
+def evaluate(tau, resize):
+    correct = 0; latencies = []
+    subjects = [p for p in DATA_DIR.iterdir() if p.is_dir()]
+    if not subjects:
+        print(f"No subject directories found in {DATA_DIR!r}.")
+        print("Please create data/validation/<subjectname>/ with some .jpg files.")
+        sys.exit(1)
+    for subj in subjects:
+        encs = []
+        for img_path in subj.glob("*.jpg"):
+            img = face_recognition.load_image_file(img_path)
+            if resize != 1.0:
+                h, w = img.shape[:2]
+                img = cv2.resize(img, (int(w*resize), int(h*resize)))
+            enc = face_recognition.face_encodings(img)
+            if enc: encs.append(enc[0])
 
-VAL_DIR   = pathlib.Path(sys.argv[1])
-students  = list(Student.objects.all())
-encodings = [np.frombuffer(s.face_encoding, dtype=np.float64) for s in students]
-labels    = [s.user.username for s in students]
-
-def evaluate(tau: float):
-    good = total = 0
-    times = []
-    for img_path in VAL_DIR.glob("*.jpg"):
-        image = face_recognition.load_image_file(img_path)
-        encs  = face_recognition.face_encodings(image)
         if not encs: continue
-        start = time.time()
-        dist  = face_recognition.face_distance(encodings, encs[0])
-        idx   = np.argmin(dist)
-        times.append((time.time() - start) * 1000)
-        if dist[idx] < tau and labels[idx] == img_path.stem.split("_")[0]:
-            good += 1
-        total += 1
-    return (good / total), (np.mean(times) if times else 0)
+        ref = np.mean(encs[:-1], axis=0)        # use N-1 images as template
+        test= encs[-1]                          # last image as probe
 
+        t0 = time.time()
+        dist = np.linalg.norm(test - ref)
+        latencies.append((time.time()-t0)*1000)
+
+        if dist < tau: correct += 1
+
+    total = len(subjects)
+    acc   = correct / total
+    if latencies:
+        avg_lat = sum(latencies) / len(latencies)
+    else:
+        avg_lat = float("inf")
+    return acc, avg_lat
+
+# ---------------------------------------------------------------------------
 def objective(trial):
-    tau = trial.suggest_float("threshold", 0.40, 0.80, step=0.01)
-    acc, lat = evaluate(tau)
-    trial.set_user_attr("latency_ms", lat)
-    return acc - (lat / 2000) * 0.1      # accuracy primary, slight latency penalty
+    tau    = trial.suggest_float("threshold", 0.30, 0.80, step=0.01)
+    resize = trial.suggest_float("resize",    0.25, 1.0,  step=0.05)
+
+    acc, lat = evaluate(tau, resize)
+    trial.set_user_attr("latency", lat)
+    # we want highest accuracy; Optuna maximises by default
+    return acc
 
 study = optuna.create_study(direction="maximize")
 study.optimize(objective, n_trials=40)
 
-best = study.best_params | {
-    "accuracy": round(study.best_value, 4),
-    "latency_ms": int(study.best_trial.user_attrs["latency_ms"]),
-}
+best = study.best_params
+best["accuracy"]   = study.best_value
+best["latency_ms"] = study.best_trial.user_attrs["latency"]
 
 print("Best params:", best)
-(ROOT / "experiments" / "best_params.json").write_text(json.dumps(best, indent=2))
+
+# save for runtime
+(BASE_DIR / "best_params.json").write_text(json.dumps(best, indent=2))

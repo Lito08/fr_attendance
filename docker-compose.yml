@@ -1,24 +1,28 @@
 version: "3.9"
+
 services:
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile      # or Dockerfile.dev
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - ./:/code
-    ports:
-      - "8000:8000"
+      - .:/code
     env_file: .env
     depends_on:
       - db
+    ports:
+      - "8000:8000"
 
   db:
-    image: postgres:16
+    image: postgres:16-alpine
+    restart: always
     environment:
-      POSTGRES_DB: fr_db
-      POSTGRES_USER: fr_user
-      POSTGRES_PASSWORD: fr_pass
+      POSTGRES_DB:       ${DB_NAME}
+      POSTGRES_USER:     ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
     volumes:
       - pgdata:/var/lib/postgresql/data
 
 volumes:
- pgdata:
+  pgdata:

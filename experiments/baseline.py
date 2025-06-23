@@ -1,38 +1,35 @@
-"""
-baseline.py – measure current accuracy / latency
-Run: docker compose exec web python experiments/baseline.py /code/data/validation
-"""
-import pathlib, sys, os, json, numpy as np, face_recognition, time
+import json, sys, face_recognition, numpy as np, cv2, time
+from pathlib import Path
 
-# ── make Django settings importable ───────────────────────────────────────────
-ROOT = pathlib.Path(__file__).resolve().parent.parent    # /code
-sys.path.append(str(ROOT))
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
-import django; django.setup()
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = Path(sys.argv[1])
+USE_BEST = "--use-best" in sys.argv
 
-from attendance.models import Student
-from attendance.utils  import find_match
+best = {}
+if USE_BEST:
+    best = json.loads((BASE_DIR / "best_params.json").read_text())
 
-VAL_DIR  = pathlib.Path(sys.argv[1])
-students = list(Student.objects.all())
+TAU    = best.get("threshold", 0.6)
+RESIZE = best.get("resize", 1.0)
 
-total = correct = 0
-latencies = []
+def evaluate():
+    correct = 0; lat = []
+    subs = [p for p in DATA_DIR.iterdir() if p.is_dir()]
+    if not subs:
+        print(f"No subject directories found in {DATA_DIR!r}.")
+        print("Please create data/validation/<subjectname>/ with some .jpg files.")
+        sys.exit(1)
+    for s in subs:
+        encs = [face_recognition.face_encodings(
+                cv2.resize(face_recognition.load_image_file(p),
+                           None, fx=RESIZE, fy=RESIZE))[0]
+                for p in s.glob("*.jpg")]
+        ref, test = np.mean(encs[:-1], axis=0), encs[-1]
+        t0 = time.time()
+        d  = np.linalg.norm(test-ref)
+        lat.append((time.time()-t0)*1000)
+        if d < TAU: correct +=1
+    return correct/len(subs), sum(lat)/len(lat)
 
-for img_path in VAL_DIR.glob("*.jpg"):
-    label = img_path.stem.split("_")[0]
-    img   = face_recognition.load_image_file(img_path)
-    student, _, lat = find_match(img, students)
-    latencies.append(lat)
-    if student and student.user.username == label:
-        correct += 1
-    total += 1
-
-res = {
-    "total": total,
-    "correct": correct,
-    "accuracy": round(correct / total * 100, 2) if total else 0,
-    "avg_latency_ms": int(np.mean(latencies)) if latencies else 0,
-}
-print(json.dumps(res, indent=2))
-(ROOT / "experiments" / "baseline.json").write_text(json.dumps(res, indent=2))
+acc, ms = evaluate()
+print(f"total {len(list(DATA_DIR.iterdir()))}\naccuracy {acc:.3f}\nlatency {ms:.0f}ms")
