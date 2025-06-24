@@ -1,11 +1,9 @@
 import io, json, time, os
 from pathlib import Path
-
-import cv2                            # already available (opencv-python-headless)
+import cv2
 import numpy as np
 import face_recognition
-
-from . import faceconf                # keeps your hard-coded fallback τ
+from . import faceconf
 
 # ─── Load tuned parameters (threshold τ and resize r) ────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent   # project root

@@ -120,11 +120,6 @@ def recognise_page(request):
 @csrf_exempt
 @login_required
 def recognise_api(request):
-    """
-    Expects POST JSON: {"frame": "data:image/jpeg;base64,...", "live": 1}
-    FALLBACK: X-Frame-Data header or form field.
-    Returns JSON: {"match": bool, "name": str, "distance": float, "latency": int}
-    """
     if request.method != "POST":
         return JsonResponse({"error": "POST only"}, status=400)
 
@@ -157,7 +152,7 @@ def recognise_api(request):
     except Exception:
         return JsonResponse({"error": "cannot decode image"}, status=400)
 
-    # Run your matching logic
+    # Run matching logic
     students = Student.objects.select_related("user").all()
     student, dist, latency = find_match(img, list(students))
 

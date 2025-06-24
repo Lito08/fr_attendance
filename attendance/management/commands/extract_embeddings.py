@@ -1,3 +1,5 @@
+# attendance/management/commands/extract_embeddings.py
+
 import os
 import pickle
 import cv2
@@ -27,21 +29,33 @@ class Command(BaseCommand):
             default=0.5,
             help="Minimum face‐detector confidence (default=0.5)",
         )
-
-        # You can override these if your models live elsewhere:
         parser.add_argument(
             "--proto",
-            default=os.path.join(settings.BASE_DIR, "face_recognition", "face_detection_model", "deploy.prototxt"),
+            default=os.path.join(
+                settings.BASE_DIR,
+                "face_recognition",
+                "face_detection_model",
+                "deploy.prototxt"
+            ),
             help="Path to Caffe deploy.prototxt",
         )
         parser.add_argument(
             "--model",
-            default=os.path.join(settings.BASE_DIR, "face_recognition", "face_detection_model", "res10_300x300_ssd_iter_140000.caffemodel"),
+            default=os.path.join(
+                settings.BASE_DIR,
+                "face_recognition",
+                "face_detection_model",
+                "res10_300x300_ssd_iter_140000.caffemodel"
+            ),
             help="Path to Caffe .caffemodel",
         )
         parser.add_argument(
             "--embedder",
-            default=os.path.join(settings.BASE_DIR, "face_recognition", "openface_nn4.small2.v1.t7"),
+            default=os.path.join(
+                settings.BASE_DIR,
+                "face_recognition",
+                "openface_nn4.small2.v1.t7"
+            ),
             help="Path to OpenFace embedding .t7",
         )
 
@@ -80,16 +94,16 @@ class Command(BaseCommand):
                 continue
 
             # resize to width=600
-            h, w = image.shape[:2]
+            (h, w) = image.shape[:2]
             if w != 600:
-                image = cv2.resize(image, (600, int(600*h/w)))
-                h, w = image.shape[:2]
+                image = cv2.resize(image, (600, int(600 * h / w)))
+                (h, w) = image.shape[:2]
 
             # face detect
             blob = cv2.dnn.blobFromImage(
-                cv2.resize(image, (300,300)),
-                1.0, (300,300),
-                (104.0,177.0,123.0),
+                cv2.resize(image, (300, 300)),
+                1.0, (300, 300),
+                (104.0, 177.0, 123.0),
                 swapRB=False, crop=False
             )
             detector.setInput(blob)
@@ -99,22 +113,23 @@ class Command(BaseCommand):
                 continue
 
             # pick the highest‐confidence detection
-            idx       = np.argmax(detections[0,0,:,2])
-            confidence= detections[0,0,idx,2]
+            idx        = np.argmax(detections[0, 0, :, 2])
+            confidence = detections[0, 0, idx, 2]
             if confidence < min_conf:
                 continue
 
             # extract ROI
-            box = detections[0,0,idx,3:7] * np.array([w,h,w,h])
+            box = detections[0, 0, idx, 3:7] * np.array([w, h, w, h])
             (startX, startY, endX, endY) = box.astype("int")
             face = image[startY:endY, startX:endX]
-            fH, fW = face.shape[:2]
+            (fH, fW) = face.shape[:2]
             if fW < 20 or fH < 20:
                 continue
 
             # embedding
             faceBlob = cv2.dnn.blobFromImage(
-                face, 1.0/255, (96,96), (0,0,0), swapRB=True, crop=False
+                face, 1.0/255, (96, 96), (0, 0, 0),
+                swapRB=True, crop=False
             )
             embedder.setInput(faceBlob)
             vec = embedder.forward()
@@ -123,7 +138,7 @@ class Command(BaseCommand):
             knownEmbeddings.append(vec.flatten())
             total += 1
 
-        self.stdout.write(f"[✅] Extracted {total} face embeddings, serializing…")
+        self.stdout.write(f"[✅] Extracted {total} embeddings, serializing…")
         data = {"embeddings": knownEmbeddings, "names": knownNames}
         with open(output_file, "wb") as f:
             pickle.dump(data, f)

@@ -4,11 +4,9 @@
   const statusEl = document.getElementById("status");
   const apiUrl   = videoEl.dataset.api;
 
-  // 1) start webcam
   videoEl.srcObject = await navigator.mediaDevices.getUserMedia({ video:true });
 
-  // 2) set up FaceMesh (UMD v0.4)
-  const faceMesh = new FaceMesh.FaceMesh({
+  const faceMesh = new FaceMesh({
     locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${f}`
   });
   faceMesh.setOptions({ maxNumFaces:1, refineLandmarks:true });
@@ -77,6 +75,5 @@
     .finally(() => stepIdx = 0);
   });
 
-  // 3) wire up the camera helper
   new Camera(videoEl, { onFrame: async () => await faceMesh.send({ image:videoEl }) }).start();
 })();
