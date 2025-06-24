@@ -1,62 +1,34 @@
 {% extends "base.html" %}
 {% load static %}
-
 {% block title %}Recognise{% endblock %}
 
 {% block content %}
-  <h1 class="mb-4 text-center">Recognise &amp; Mark Attendance</h1>
+<h1 class="mb-4">Recognise &amp; Mark Attendance</h1>
 
-  <!-- Prompt text -->
-  <h5 id="prompt" class="text-primary text-center mb-3"></h5>
-  <p id="status" class="text-center small text-muted mb-3"></p>
+<div class="d-flex flex-column align-items-center gap-3">
 
-  <!-- Video + overlay + reset button -->
-  <div class="position-relative mx-auto" style="max-width: 640px;">
-    <!-- Live camera feed -->
-    <video id="cam"
-           data-api="{% url 'recognise_api' %}"
-           class="w-100 rounded shadow-sm"
-           autoplay muted
-           playsinline
-           style="display: block; aspect-ratio: 4/3;">
-    </video>
+  <!-- Pass API URL to JS via data-api -->
+  <video id="cam"
+         data-api="{% url 'recognise_api' %}"
+         autoplay playsinline
+         class="border rounded w-100 w-md-50"></video>
 
-    <!-- Dashed circle guide -->
-    <div id="overlayCircle"
-         class="position-absolute top-50 start-50 translate-middle rounded-circle"
-         style="
-           width: 200px;
-           height: 200px;
-           border: 4px dashed #0d6efd;
-         ">
-    </div>
+  <!-- prompt changes (“look left”…) -->
+  <h5 id="prompt" class="text-primary mt-3"></h5>
+  <p id="status" class="small text-muted"></p>
+</div>
 
-    <!-- Reset challenge -->
-    <button id="resetBtn"
-            class="btn btn-outline-secondary position-absolute"
-            style="
-              bottom: 1rem;
-              left: 50%;
-              transform: translateX(-50%);
-            ">
-      Reset
-    </button>
-  </div>
-
-  <!-- Success toast (bottom of page) -->
-  <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
-    <div id="recToast" class="toast align-items-center text-bg-success border-0">
-      <div class="d-flex">
-        <div id="toastMsg" class="toast-body fw-bold"></div>
-        <button type="button"
-                class="btn-close btn-close-white me-2 m-auto"
-                data-bs-dismiss="toast"
-                aria-label="Close">
-        </button>
-      </div>
+<!-- toast for success -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
+  <div id="recToast" class="toast align-items-center text-bg-success border-0">
+    <div class="d-flex">
+      <div id="toastMsg" class="toast-body fw-bold"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      <button id="resetBtn" class="btn btn-outline-secondary mt-3"> Reset Challenge</button>
     </div>
   </div>
+</div>
 
-  <!-- Head‐pose liveness + match JS -->
-  <script defer src="{% static 'attendance/js/recognise_mesh.js' %}"></script>
+<!-- Head-pose script -->
+<script defer src="{% static 'attendance/js/recognise_mesh.js' %}"></script>
 {% endblock %}

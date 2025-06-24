@@ -1,32 +1,32 @@
-# ────────────────────────────────────────────────────
-# Dockerfile  –  Face-Rec Attendance (no Poetry)
-# ────────────────────────────────────────────────────
 FROM python:3.11-slim
 
-# ── Basic OS packages you need for dlib / OpenCV builds
+# install system‐deps needed to compile dlib and OpenCV‐headless
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-        build-essential \
-        build-essential libgl1 libglib2.0-0 git \
-        cmake \
-        libgl1 \
-        git \
-        nodejs \
-        npm \
-        libboost-python-dev \
-        libboost-system-dev \
- && rm -rf /var/lib/apt/lists/*               # keep the image small
+      build-essential \
+      cmake \
+      pkg-config \
+      libboost-python-dev \
+      libboost-system-dev \
+      libjpeg-dev \
+      libpng-dev \
+      libopenblas-dev \
+      liblapack-dev \
+ && rm -rf /var/lib/apt/lists/*
 
-# ── Work directory inside the image
+# set a working directory
 WORKDIR /code
 
-# ── Python dependencies
-COPY requirements.txt /code/
-RUN pip install --no-cache-dir --upgrade pip \
- && pip install --no-cache-dir -r requirements.txt
+# copy your requirements.txt (with numpy<2 pinned!) and install
+COPY requirements.txt .
+RUN pip install --upgrade pip \
+ && pip install -r requirements.txt
 
-# ── Copy the rest of your project
-COPY . /code
+# copy the rest of your code
+COPY . .
 
-# ── Gunicorn entry-point (you can switch to Django’s runserver in dev)
-CMD ["gunicorn", "config.wsgi:application", "-b", "0.0.0.0:8000"]
+# collect static, migrate, etc., if you like
+# RUN python manage.py collectstatic --no-input
+# RUN python manage.py migrate
+
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
