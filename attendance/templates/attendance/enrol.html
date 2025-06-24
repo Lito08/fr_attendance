@@ -1,28 +1,70 @@
 {% extends "base.html" %}
 {% load static %}
+
 {% block title %}Enrol{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Enrol your face</h1>
+  <h1 class="mb-4 text-center">Enrol your face</h1>
 
-<div class="d-flex flex-column align-items-center gap-3">
-  <video id="cam" autoplay playsinline
-         class="border rounded w-100 w-md-50"></video>
-  <h5 id="prompt" class="text-primary mt-3"></h5>
-  <svg width="250" height="250" id="guide">
-    <!-- simple circle guide -->
-    <circle cx="125" cy="125" r="120" fill="none" stroke="#0d6efd"
-            stroke-width="4" stroke-dasharray="10 8"></circle>
-  </svg>
+  <div class="container">
+    <div class="row">
+      <!-- Video + overlay + controls (8 cols) -->
+      <div class="col-lg-8">
+        <div class="position-relative mx-auto" style="max-width: 640px;">
+          <video id="cam"
+                 class="w-100 rounded shadow-sm"
+                 autoplay muted
+                 playsinline
+                 style="display:block; aspect-ratio:4/3;">
+          </video>
+          <div id="overlayCircle"
+               class="position-absolute top-50 start-50 translate-middle rounded-circle"
+               style="
+                 width:200px; height:200px;
+                 border:4px dashed #0d6efd;">
+          </div>
+          <button id="startBtn"
+                  data-api="{% url 'enrol_api' %}"
+                  class="btn btn-primary position-absolute"
+                  style="bottom:1rem; left:50%; transform:translateX(-50%);">
+            Start capture
+          </button>
+        </div>
 
-  <button id="startBtn"
-          data-api="{% url 'enrol_api' %}"
-          class="btn btn-primary">
-    Start capture
-  </button>
-  
-  <p id="status" class="fw-semibold text-center mt-2"></p>
-</div>
+        <div class="progress mt-4 mx-auto" style="max-width:640px;">
+          <div id="enrolProgress" class="progress-bar" role="progressbar" style="width:0%">0%</div>
+        </div>
+        <p id="prompt" class="text-primary text-center mt-3"></p>
+        <p id="status" class="fw-semibold text-center"></p>
+      </div>
 
-<script defer src="{% static 'attendance/js/enrol_auto.js' %}"></script>
+      <!-- Stats sidebar (4 cols) -->
+      <div class="col-lg-4">
+        <div class="border rounded p-3 sticky-top" style="top:5rem;">
+          <h5 class="mb-3">Enrol Stats</h5>
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item">
+              Step: <span id="stat-step">0/5</span> —
+              <em id="stat-msg">waiting…</em>
+            </li>
+            <li class="list-group-item">
+              Yaw: <span id="stat-yaw">0.0</span>°
+            </li>
+            <li class="list-group-item">
+              Pitch: <span id="stat-pitch">0.0</span>°
+            </li>
+            <li class="list-group-item">
+              Progress: <span id="stat-progress">0</span>%
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MediaPipe deps -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.5/camera_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.5/face_mesh.js"></script>
+  <!-- Enrol JS -->
+  <script defer src="{% static 'attendance/js/enrol_auto.js' %}"></script>
 {% endblock %}

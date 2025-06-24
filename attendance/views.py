@@ -13,6 +13,15 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Student, AttendanceLog
 from .utils  import find_match
 
+def home_view(request):
+    """
+    If you’re logged in, go to dashboard.
+    Otherwise, send you to the login page.
+    """
+    if not request.user.is_authenticated:
+        return redirect("login")
+    return redirect("dashboard")
+
 # ───── ENROL ────────────────────────────────────────────
 @login_required
 def enrol_view(request):

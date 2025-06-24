@@ -4,6 +4,7 @@
   const p  = document.getElementById("prompt");
   const s  = document.getElementById("status");
   const api = v.dataset.api;                  // URL from data-attribute
+  const resetBtn = document.getElementById("resetBtn");
 
   /* start webcam */
   v.srcObject = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -95,3 +96,10 @@ fm.onResults(({ multiFaceLandmarks }) => {
   /* feed webcam frames to FaceMesh */
   new Camera(v, { onFrame: async () => fm.send({ image: v }) }).start();
 })();
+
+resetBtn.onclick = () => {
+  i = 0;
+  p.textContent = steps[0];
+  p.className   = "text-primary mt-3";
+  s.textContent = "";
+};
