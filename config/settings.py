@@ -29,8 +29,6 @@ INSTALLED_APPS = [
     "attendance",
 ]
 
-TAILWIND_APP_NAME = "theme"
-
 MIDDLEWARE = [
     "csp.middleware.CSPMiddleware",
     'django.middleware.security.SecurityMiddleware',

@@ -1,6 +1,0 @@
-{
-  "threshold": 0.35,
-  "resize": 0.55,
-  "accuracy": 1.0,
-  "latency_ms": 4.422187805175781
-}
