@@ -6,3 +6,5 @@ opencv-python-headless==4.10.0.82
 imutils==0.5.4         
 scikit-learn==1.2.2             
 gunicorn==22.0.0
+channels>=4.0
+qrcode>=8.2

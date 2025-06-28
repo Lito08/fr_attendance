@@ -1,54 +1,43 @@
-import io, json, time, os
+import io, json, time, cv2, numpy as np, face_recognition
 from pathlib import Path
-import cv2
-import numpy as np
-import face_recognition
-from . import faceconf
+from . import faceconf   # uses your existing THRESHOLD constant
 
-# ─── Load tuned parameters (threshold τ and resize r) ────────────────────────
-BASE_DIR = Path(__file__).resolve().parent.parent   # project root
-
+BASE_DIR = Path(__file__).resolve().parent.parent
 try:
     _best = json.loads((BASE_DIR / "best_params.json").read_text())
 except FileNotFoundError:
     _best = {}
 
-THRESHOLD = _best.get("threshold", faceconf.THRESHOLD)  # distance cutoff
-RESIZE    = _best.get("resize",    1.0)                 # 1.0 = no down-scale
+THRESHOLD = _best.get("threshold", faceconf.THRESHOLD)
+RESIZE    = _best.get("resize",    1.0)   # 1.0 = no down-scale
 
-# ─── Helpers ─────────────────────────────────────────────────────────────────
-def bytes_to_enc(b: bytes) -> np.ndarray:
-    """Convert DB-stored BLOB back to 128-D numpy vector."""
-    return np.frombuffer(b, dtype=np.float64)
 
-# ─── Main matcher ────────────────────────────────────────────────────────────
-def find_match(img, students, threshold: float = THRESHOLD):
+def _bytes_to_vec(blob: bytes) -> np.ndarray:
+    return np.frombuffer(blob, dtype=np.float64)
+
+
+def find_match(rgb_img, students, threshold: float = THRESHOLD):
     """
-    img: numpy array (RGB)
-    students: iterable of Student objects (with face_encoding bytes)
-    threshold: distance cutoff τ
-    Returns (student|None, distance|None, latency_ms)
+    Return (student|None, distance|None, latency_ms)
     """
-    t0 = time.time()
+    t0 = time.perf_counter()
 
-    # optional down-scaling for speed
     if RESIZE != 1.0:
-        h, w = img.shape[:2]
-        img  = cv2.resize(img, (int(w * RESIZE), int(h * RESIZE)))
+        h, w = rgb_img.shape[:2]
+        rgb_img = cv2.resize(rgb_img, (int(w * RESIZE), int(h * RESIZE)))
 
-    encs = face_recognition.face_encodings(img)
+    encs = face_recognition.face_encodings(rgb_img)
     if not encs:
-        return None, None, int((time.time() - t0) * 1000)
+        return None, None, int((time.perf_counter() - t0) * 1000)
 
-    unknown = encs[0]
-    enc_list = [bytes_to_enc(s.face_encoding) for s in students]
-    if not enc_list:
-        return None, None, int((time.time() - t0) * 1000)
+    probe = encs[0]
+    ref   = [_bytes_to_vec(s.face_encoding) for s in students]
+    if not ref:
+        return None, None, int((time.perf_counter() - t0) * 1000)
 
-    dist = face_recognition.face_distance(enc_list, unknown)
-    idx  = int(np.argmin(dist))
-    latency = int((time.time() - t0) * 1000)
+    dist  = face_recognition.face_distance(ref, probe)
+    idx   = int(np.argmin(dist))
+    bestd = float(dist[idx])
+    ms    = int((time.perf_counter() - t0) * 1000)
 
-    if dist[idx] < threshold:
-        return students[idx], float(dist[idx]), latency
-    return None, float(dist[idx]), latency
+    return (students[idx], bestd, ms) if bestd < threshold else (None, bestd, ms)

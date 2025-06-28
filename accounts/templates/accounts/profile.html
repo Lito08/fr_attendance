@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+
+    <h1 class="h4 mb-4 text-center">My Profile</h1>
+
+    <table class="table">
+      <tr><th scope="row">Full name</th>
+          <td>{{ request.user.get_full_name }}</td></tr>
+
+      <tr><th scope="row">Matric ID</th>
+          <td>{{ request.user.username }}</td></tr>
+
+      <tr><th scope="row">Email</th>
+          <td>{{ request.user.email }}</td></tr>
+
+      {% if student %}
+        <tr><th scope="row">Face enrolled</th>
+            <td class="text-success fw-semibold">Yes</td></tr>
+      {% endif %}
+    </table>
+
+    <a href="{% url 'password_change' %}" class="btn btn-primary w-100">
+      Change password
+    </a>
+
+  </div>
+</div>
+{% endblock %}

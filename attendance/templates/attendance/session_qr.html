@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}QR – {{ session.subject.code }}{% endblock %}
+{% block content %}
+<h1>{{ session.subject }}</h1>
+<p>Scan to mark attendance.</p>
+<img src="data:image/png;base64,{{ qr }}" class="img-fluid">
+{% endblock %}
