@@ -7,6 +7,7 @@ class Student(models.Model):
     user          = models.OneToOneField(User, on_delete=models.CASCADE)
     face_encoding = models.BinaryField()            # 128-d NumPy vector → bytes
     created       = models.DateTimeField(auto_now_add=True)
+    must_change_password = models.BooleanField(default=True)
 
     def __str__(self):
         return self.user.get_full_name() or self.user.username

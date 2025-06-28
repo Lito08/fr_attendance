@@ -1,17 +1,115 @@
-import base64, csv, io, os, time, json, numpy as np, face_recognition
+import base64, csv, io, os, time, json, uuid, secrets
+import numpy as np, face_recognition
 from pathlib import Path
-from django.conf import settings
-from django.http import JsonResponse
 from datetime import timedelta
+
+from django.conf import settings
+from django.utils import timezone
+from django.shortcuts import render, redirect
+from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
-from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render, redirect
-from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from .models import Student, AttendanceLog
+from django.contrib.auth.views import LoginView, PasswordChangeView
+from django.contrib.admin.views.decorators import staff_member_required
+from django.core.mail import send_mail
+from django.urls import reverse_lazy
+
+from .models import Student, AttendanceLog, User
 from .utils  import find_match
+from .forms  import AdminRegisterUserForm
+
+@staff_member_required
+def admin_register_user(request):
+    if request.method == "POST":
+        form = AdminRegisterUserForm(request.POST)
+        if form.is_valid():
+            role   = form.cleaned_data["role"]
+            email  = form.cleaned_data["email"].lower()
+            frames = json.loads(form.cleaned_data["frames"])
+
+            # --- username generator ---
+            prefix = "s" if role == "student" else "lec"
+            username = f"{prefix}{timezone.now():%y}{uuid.uuid4().hex[:6]}"
+
+            # --- face encoding averaging ---
+            enc_list = []
+            for uri in frames:
+                _, b64 = uri.split(",", 1)
+                img = face_recognition.load_image_file(io.BytesIO(base64.b64decode(b64)))
+                enc = face_recognition.face_encodings(img)
+                if enc:
+                    enc_list.append(enc[0])
+            if not enc_list:
+                messages.error(request, "No face detected in frames.")
+                return redirect("register_user")
+
+            avg = np.mean(enc_list, axis=0)
+
+            # --- create user & student row ---
+            temp_pass = secrets.token_urlsafe(8)
+            user = User.objects.create_user(
+                username=username,
+                password=temp_pass,
+                email=email,
+                is_staff = role == "lecturer"
+            )
+            if role == "student":
+                Student.objects.create(
+                    user=user,
+                    face_encoding=avg.tobytes(),
+                    must_change_password=True
+                )
+
+            # --- send email ---
+            subject = "Your F-Rec Attendance login"
+            body    = (f"Hi,\n\nYour account has been created.\n"
+                       f"Username: {username}\n"
+                       f"Temporary password: {temp_pass}\n\n"
+                       "Log in at https://attendance.youruni.edu/login/\n"
+                       "You will be asked to set a new password.\n\n"
+                       "Regards,\nAdmin")
+            send_mail(subject, body, None, [email])
+
+            messages.success(request, f"User {username} created & e-mailed.")
+            return redirect("register_user")
+    else:
+        form = AdminRegisterUserForm()
+
+    return render(request, "attendance/register_user.html", {"form": form})
+
+class FirstLoginCheckLoginView(LoginView):
+    """
+    After authenticating, redirect students who must change their password.
+    """
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        # Only students have the flag
+        try:
+            if self.request.user.student.must_change_password:
+                return redirect("password_change")
+        except Student.DoesNotExist:
+            pass  # Lecturer or admin — skip
+        return response
+    
+class PasswordChangeAndFlagView(PasswordChangeView):
+    success_url = reverse_lazy("password_change_done")  # or wherever
+    template_name = "registration/password_change_form.html"
+
+    def form_valid(self, form):
+        # call super() first so the password is actually changed
+        response = super().form_valid(form)
+        # flip the flag
+        try:
+            student = self.request.user.student
+            if student.must_change_password:
+                student.must_change_password = False
+                student.save(update_fields=["must_change_password"])
+        except Student.DoesNotExist:
+            pass
+        return response
 
 def home_view(request):
     """
@@ -172,6 +270,42 @@ def recognise_api(request):
     # No match
     return JsonResponse({"match": False, "latency": latency})
 
+@csrf_exempt
+def face_login_api(request):
+    """
+    Accept a single camera frame, try to match a user, and log them in.
+    Returns JSON {ok, redirect} on success or {error} on failure.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "POST only"}, status=400)
+
+    try:
+        payload  = json.loads(request.body)
+        data_uri = payload["frame"]
+        _, b64   = data_uri.split(",", 1)
+        img      = face_recognition.load_image_file(io.BytesIO(base64.b64decode(b64)))
+    except Exception:
+        return JsonResponse({"error": "bad image"}, status=400)
+
+    students = Student.objects.select_related("user").all()
+    student, dist, latency = find_match(img, list(students))
+
+    if student:
+        # ----- log user in -----
+        login(request, student.user, backend="django.contrib.auth.backends.ModelBackend")
+
+        # ----- where to send them? -----
+        if getattr(student, "must_change_password", False):
+            redirect_url = "/accounts/password_change/"
+        else:
+            redirect_url = "/dashboard/"
+
+        # log attendance automatically if you like:
+        # AttendanceLog.objects.create(student=student, verified=True, latency_ms=latency)
+
+        return JsonResponse({"ok": True, "redirect": redirect_url})
+
+    return JsonResponse({"error": "no match"}, status=404)
 # ───── DASHBOARD & CSV ──────────────────────────────────
 @login_required
 def dashboard_view(request):

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Register User{% endblock %}
+
+{% block content %}
+<h1 class="h5 mb-4">Admin — Register new student/lecturer</h1>
+
+<form method="post" id="regForm" class="vstack gap-3">
+  {% csrf_token %}
+  {{ form.role.label_tag }} {{ form.role }}
+  {{ form.email.label_tag }} {{ form.email }}
+
+  <!-- Webcam preview -->
+  <video id="video" width="320" height="240" autoplay muted></video>
+  <progress id="prog" max="5" value="0" class="w-100 mb-2"></progress>
+
+  {{ form.frames }}  <!-- hidden field -->
+  <button class="btn btn-primary">Create account</button>
+</form>
+
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2"></script>
+<script>
+const REQUIRED = 5;
+let frames = [];
+
+async function captureLoop() {
+  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  const video = document.getElementById("video");
+  video.srcObject = stream;
+  await video.play();
+
+  const prog  = document.getElementById("prog");
+  const hidden = document.getElementById("id_frames");
+
+  while (frames.length < REQUIRED) {
+    await new Promise(r => setTimeout(r, 600));  // grab ~2 fps
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height= video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    frames.push(canvas.toDataURL("image/jpeg"));
+    prog.value = frames.length;
+  }
+  hidden.value = JSON.stringify(frames);
+}
+captureLoop();     // fire on page load
+</script>
+{% endblock %}
