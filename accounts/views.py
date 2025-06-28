@@ -14,6 +14,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from pyexpat.errors import messages
+from django.db.models import Q
 
 from attendance.utils  import find_match
 from .models           import Student
@@ -83,8 +84,40 @@ def admin_register_user(request):
 
 @root_only
 def user_list_view(request):
-    users = User.objects.all().select_related("student")
-    return render(request, "accounts/user_list.html", {"users": users})
+    role  = request.GET.get("role", "")          # "", root, lecturer, student
+    q     = request.GET.get("q", "").strip()
+    sort  = request.GET.get("sort", "username")  # username, name, role, face
+
+    qs = User.objects.all().select_related("student")
+
+    if role == "root":
+        qs = qs.filter(is_superuser=True)
+    elif role == "lecturer":
+        qs = qs.filter(is_staff=True, is_superuser=False)
+    elif role == "student":
+        qs = qs.filter(student__isnull=False, is_staff=False)
+
+    if q:
+        qs = qs.filter(
+            Q(username__icontains=q) |
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q)
+        )
+
+    # map “face” to annotation for sorting
+    if sort == "face":
+        qs = qs.annotate(has_face=~Q(student__face_encoding=None)).order_by("-has_face")
+    elif sort == "name":
+        qs = qs.order_by("first_name", "last_name")
+    else:      # username / role fallback
+        qs = qs.order_by(sort)
+
+    return render(request, "accounts/user_list.html", {
+        "users": qs,
+        "role":  role,
+        "q":     q,
+        "sort":  sort,
+    })
 
 @root_only
 def user_edit_view(request, pk):

@@ -1,11 +1,39 @@
 {% extends "base.html" %}
-{% block title %}{% if edit %}Edit{% else %}Add{% endif %} User{% endblock %}
+{% block title %}Edit User{% endblock %}
+
 {% block content %}
-<h1 class="h5 mb-3">{% if edit %}Edit{% else %}Add{% endif %} User</h1>
-<form method="post" class="vstack gap-3" style="max-width:480px">
+<h1 class="h5 mb-3">Edit User</h1>
+<form method="post" class="vstack gap-3" id="editForm" style="max-width:480px">
   {% csrf_token %}
   {{ form.as_p }}
-  <button class="btn btn-primary w-100">Save</button>
+
+  <!-- Webcam -->
+  <label class="form-label">Re-enrol face (optional)</label>
+  <video id="video" width="320" height="240" autoplay muted class="border rounded"></video>
+  <progress id="prog" class="w-100 mb-2" max="5" value="0"></progress>
+  {{ form.frames }}  {# hidden #}
+
+  <button class="btn btn-primary w-100 mt-3">Save</button>
   <a href="{% url 'user_list' %}" class="btn btn-link">Back</a>
 </form>
+
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2"></script>
+<script>
+const REQUIRED=5, frames=[], prog=document.getElementById("prog"),
+      hidden=document.getElementById("id_frames"), vid=document.getElementById("video");
+
+(async () => {
+  const stream = await navigator.mediaDevices.getUserMedia({video:true});
+  vid.srcObject = stream; await vid.play();
+  while (frames.length < REQUIRED) {
+    await new Promise(r=>setTimeout(r,600));
+    const c=document.createElement("canvas");
+    c.width=vid.videoWidth; c.height=vid.videoHeight;
+    c.getContext("2d").drawImage(vid,0,0);
+    frames.push(c.toDataURL("image/jpeg"));
+    prog.value=frames.length;
+  }
+  hidden.value = JSON.stringify(frames);
+})();
+</script>
 {% endblock %}

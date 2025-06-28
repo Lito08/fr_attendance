@@ -2,11 +2,57 @@
 {% block title %}Users{% endblock %}
 
 {% block content %}
-<h1 class="h4 mb-4">All Users</h1>
+<h1 class="h4 mb-4">User Directory</h1>
 
-<table class="table table-sm">
+<!-- ─── Filter + search bar ───────────────────────────── -->
+<form class="row g-2 mb-3">
+  <div class="col-auto">
+    <select name="role" class="form-select" onchange="this.form.submit()">
+      <option value=""         {% if role == "" %}selected{% endif %}>All roles</option>
+      <option value="root"     {% if role == "root" %}selected{% endif %}>Root</option>
+      <option value="lecturer" {% if role == "lecturer" %}selected{% endif %}>Lecturer</option>
+      <option value="student"  {% if role == "student" %}selected{% endif %}>Student</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Search…">
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-primary">Filter</button>
+  </div>
+</form>
+
+<!-- ─── Results table ─────────────────────────────────── -->
+<table class="table table-sm table-hover">
   <thead>
-    <tr><th>Username</th><th>Full name</th><th>Role</th><th>Email</th></tr>
+    <tr>
+      {% comment %} helper: keep current role & q in all sort links {% endcomment %}
+      {% with base="" %}
+        {% if role %}{% firstof "" %}{% endif %}
+      {% endwith %}
+      <th>
+        <a href="?{% if role %}role={{ role }}&amp;{% endif %}{% if q %}q={{ q|urlencode }}&amp;{% endif %}sort=username">
+          Username
+        </a>
+      </th>
+      <th>
+        <a href="?{% if role %}role={{ role }}&amp;{% endif %}{% if q %}q={{ q|urlencode }}&amp;{% endif %}sort=name">
+          Full&nbsp;name
+        </a>
+      </th>
+      <th>
+        <a href="?{% if role %}role={{ role }}&amp;{% endif %}{% if q %}q={{ q|urlencode }}&amp;{% endif %}sort=role">
+          Role
+        </a>
+      </th>
+      <th>Email</th>
+      <th>
+        <a href="?{% if role %}role={{ role }}&amp;{% endif %}{% if q %}q={{ q|urlencode }}&amp;{% endif %}sort=face">
+          Face&nbsp;?
+        </a>
+      </th>
+      <th></th>
+    </tr>
   </thead>
   <tbody>
     {% for u in users %}
@@ -17,11 +63,16 @@
           {% if u.is_superuser %}Root
           {% elif u.is_staff %}Lecturer
           {% elif u.student %}Student
-          {% else %}Other{% endif %}
+          {% else %}—{% endif %}
         </td>
         <td>{{ u.email }}</td>
-        <td><a href="{% url 'user_edit' u.pk %}">✎</a></td>
+        <td>{% if u.student and u.student.face_encoding %}✅{% else %}❌{% endif %}</td>
+        <td>
+          <a href="{% url 'user_edit' u.pk %}" class="btn btn-sm btn-outline-secondary">✎</a>
+        </td>
       </tr>
+    {% empty %}
+      <tr><td colspan="6" class="text-muted">No users.</td></tr>
     {% endfor %}
   </tbody>
 </table>

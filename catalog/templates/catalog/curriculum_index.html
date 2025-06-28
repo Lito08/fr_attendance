@@ -1,92 +1,156 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Curriculum{% endblock %}
 
 {% block content %}
 <h1 class="h4 mb-4">Curriculum Manager</h1>
 
-<!-- ─── Programmes ───────────────────────────────────────────── -->
-<h5>Programmes
-  <a class="btn btn-sm btn-success" href="{% url 'programme_add' %}">Add</a>
-</h5>
-<ul>
-  {% for p in programmes %}
-    <li>
-      <a href="{% url 'programme_edit' p.pk %}">{{ p.code }}</a> – {{ p.name }}
-    </li>
-  {% empty %}
-    <li class="text-muted">none yet</li>
-  {% endfor %}
+<!-- ─── Tabs ───────────────────────────────────────────────── -->
+<ul class="nav nav-tabs mb-4" id="curTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabProg" type="button">Programmes</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabMajor" type="button">Majors</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSubj" type="button">Subjects</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabTrim" type="button">Trimesters</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabClass" type="button">Classes</button>
+  </li>
 </ul>
 
-<!-- ─── Majors ────────────────────────────────────────────────── -->
-<h5 class="mt-4">Majors
-  <a class="btn btn-sm btn-success" href="{% url 'major_add' %}">Add</a>
-</h5>
-<ul>
-  {% for m in majors %}
-    <li>
-      <a href="{% url 'major_edit' m.pk %}">{{ m.code }}</a> – {{ m.name }}
-      ({{ m.programme.code }})
-    </li>
-  {% empty %}
-    <li class="text-muted">none yet</li>
-  {% endfor %}
-</ul>
+<div class="tab-content">
 
-<!-- ─── Subjects ─────────────────────────────────────────────── -->
-<h5 class="mt-4">Subjects
-  <a class="btn btn-sm btn-success" href="{% url 'subject_add' %}">Add</a>
-</h5>
-<ul>
-  {% for s in subjects %}
-    <li>
-      <a href="{% url 'subject_edit' s.pk %}">{{ s.code }}</a> – {{ s.title }}
-    </li>
-  {% empty %}
-    <li class="text-muted">none yet</li>
-  {% endfor %}
-</ul>
+  <!-- ─── Programmes ─────────────────────────────────────── -->
+  <div class="tab-pane fade show active" id="tabProg">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">Programmes</h5>
+      <a class="btn btn-sm btn-success" href="{% url 'programme_add' %}">Add</a>
+    </div>
+    {% if programmes %}
+      <div class="row row-cols-1 row-cols-md-2 g-3">
+        {% for p in programmes %}
+          <div class="col">
+            <div class="card shadow-sm h-100">
+              <div class="card-body">
+                <h6 class="card-title">
+                  <a href="{% url 'programme_edit' p.pk %}">{{ p.code }}</a>
+                </h6>
+                <p class="card-text small text-muted mb-1">{{ p.name }}</p>
+                <span class="badge bg-primary">{{ p.credit_need }} credits</span>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted">No programmes yet.</p>
+    {% endif %}
+  </div>
 
-<!-- ─── Trimesters ────────────────────────────────────────────── -->
-<h5 class="mt-4">Trimesters
-  <a class="btn btn-sm btn-success" href="{% url 'trimester_add' %}">Add</a>
-</h5>
-<ul>
-  {% for t in trimesters %}
-    <li>
-      <a href="{% url 'trimester_edit' t.pk %}">{{ t.code }}</a>
-      {{ t.start }} – {{ t.end }}
-    </li>
-  {% empty %}
-    <li class="text-muted">none yet</li>
-  {% endfor %}
-</ul>
+  <!-- ─── Majors ──────────────────────────────────────────── -->
+  <div class="tab-pane fade" id="tabMajor">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">Majors</h5>
+      <a class="btn btn-sm btn-success" href="{% url 'major_add' %}">Add</a>
+    </div>
+    {% if majors %}
+      <ul class="list-group">
+        {% for m in majors %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>
+              <a href="{% url 'major_edit' m.pk %}">{{ m.code }}</a> — {{ m.name }}
+              <small class="text-muted">({{ m.programme.code }})</small>
+            </span>
+            <span class="badge bg-light text-dark">{{ m.programme.name }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted">No majors yet.</p>
+    {% endif %}
+  </div>
 
-<!-- ─── Classes / Offerings ──────────────────────────────────── -->
-<h5 class="mt-4">Classes
-  <a class="btn btn-sm btn-success" href="{% url 'offering_add' %}">Add</a>
-</h5>
+  <!-- ─── Subjects ───────────────────────────────────────── -->
+  <div class="tab-pane fade" id="tabSubj">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">Subjects</h5>
+      <a class="btn btn-sm btn-success" href="{% url 'subject_add' %}">Add</a>
+    </div>
+    {% if subjects %}
+      <table class="table table-sm">
+        <thead class="table-light">
+          <tr><th>Code</th><th>Title</th><th>Credits</th></tr>
+        </thead>
+        <tbody>
+          {% for s in subjects %}
+            <tr>
+              <td><a href="{% url 'subject_edit' s.pk %}">{{ s.code }}</a></td>
+              <td>{{ s.title }}</td>
+              <td>{{ s.credit_hrs }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="text-muted">No subjects yet.</p>
+    {% endif %}
+  </div>
 
-<table class="table table-sm w-auto">
-  <thead>
-    <tr>
-      <th>Subject</th><th>Trimester</th><th>Section</th><th>Lecturer</th><th></th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for o in offerings %}
-      <tr>
-        <td>{{ o.subject.code }}</td>
-        <td>{{ o.trimester.code }}</td>
-        <td>{{ o.section }}</td>
-        <td>{{ o.lecturer.get_full_name|default:o.lecturer.username }}</td>
-        <td>
-          <a href="{% url 'offering_edit' o.pk %}" class="btn btn-sm btn-outline-secondary">✎</a>
-        </td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="5" class="text-muted">no classes added yet</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+  <!-- ─── Trimesters ──────────────────────────────────────── -->
+  <div class="tab-pane fade" id="tabTrim">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">Trimesters</h5>
+      <a class="btn btn-sm btn-success" href="{% url 'trimester_add' %}">Add</a>
+    </div>
+    {% if trimesters %}
+      <ul class="list-group">
+        {% for t in trimesters %}
+          <li class="list-group-item">
+            <a href="{% url 'trimester_edit' t.pk %}">{{ t.code }}</a> :
+            {{ t.start }} → {{ t.end }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted">No trimesters yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- ─── Classes / Offerings ─────────────────────────────── -->
+  <div class="tab-pane fade" id="tabClass">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">Classes</h5>
+      <a class="btn btn-sm btn-success" href="{% url 'offering_add' %}">Add</a>
+    </div>
+    {% if offerings %}
+      <table class="table table-sm align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Subject</th><th>Trimester</th><th>Section</th><th>Lecturer</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in offerings %}
+            <tr>
+              <td>{{ o.subject.code }}</td>
+              <td>{{ o.trimester.code }}</td>
+              <td>{{ o.section }}</td>
+              <td>{{ o.lecturer.get_full_name|default:o.lecturer.username }}</td>
+              <td><a href="{% url 'offering_edit' o.pk %}" class="btn btn-sm btn-outline-secondary">✎</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="text-muted">No classes yet.</p>
+    {% endif %}
+  </div>
+
+</div>  {# /tab-content #}
 {% endblock %}
