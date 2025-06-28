@@ -2,11 +2,14 @@ from django.urls import path
 from django.contrib.auth.views import PasswordChangeDoneView, LogoutView
 from .views import (
     admin_register_user, FirstLoginCheckLoginView,
-    PasswordChangeAndFlagView, face_login_api, profile_view
+    PasswordChangeAndFlagView, face_login_api,
+    profile_view, user_list_view, user_edit_view
 )
 
 urlpatterns = [
     path("register-user/", admin_register_user, name="register_user"),
+    path("users/", user_list_view, name="user_list"),
+    path("users/<int:pk>/", user_edit_view,      name="user_edit"),
 
     path("login/",  FirstLoginCheckLoginView.as_view(), name="login"),
     path("face_login_api/", face_login_api, name="face_login_api"),

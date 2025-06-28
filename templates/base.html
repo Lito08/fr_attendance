@@ -25,7 +25,7 @@
 
 <nav class="navbar navbar-expand-md navbar-dark bg-primary fixed-top">
   <div class="container-fluid">
-    <a class="navbar-brand fw-semibold" href="/">F-Rec Attendance</a>
+    <a class="navbar-brand fw-semibold" href="/">FRA System</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -40,6 +40,10 @@
             <li class="nav-item">
               <a class="nav-link {% if request.resolver_match.url_name == 'register_user' %}active{% endif %}"
                  href="{% url 'register_user' %}">Register&nbsp;User</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'user_list' %}active{% endif %}"
+                href="{% url 'user_list' %}">Manage Users</a>
             </li>
             <li class="nav-item">
               <a class="nav-link {% if request.resolver_match.url_name == 'curriculum_index' %}active{% endif %}"

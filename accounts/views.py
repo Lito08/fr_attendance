@@ -5,19 +5,21 @@ from django.contrib.auth import (
     get_user_model, login,
 )
 from django.contrib.auth.views import LoginView, PasswordChangeView
-from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.admin.views.decorators import staff_member_required, user_passes_test
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse_lazy
 from django.core.mail import send_mail
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from pyexpat.errors import messages
 
 from attendance.utils  import find_match
 from .models           import Student
-from .forms            import AdminRegisterUserForm
+from .forms            import AdminRegisterUserForm, UserForm
 
+root_only = user_passes_test(lambda u: u.is_superuser, login_url="login")
 User = get_user_model()
 
 # ─── Root-only: create account + face template ──────────────────────────
@@ -46,7 +48,7 @@ def admin_register_user(request):
                 return render(request, "attendance/register_user.html",
                               {"form": form, "error": "No face detected."})
 
-            avg = np.mean(encs, axis=0)
+            avg = np.mean(encs, axis=0) if encs else None
 
             # create user + student profile
             pw   = secrets.token_urlsafe(8)
@@ -78,6 +80,51 @@ def admin_register_user(request):
         form = AdminRegisterUserForm()
 
     return render(request, "attendance/register_user.html", {"form": form})
+
+@root_only
+def user_list_view(request):
+    users = User.objects.all().select_related("student")
+    return render(request, "accounts/user_list.html", {"users": users})
+
+@root_only
+def user_edit_view(request, pk):
+    user = get_object_or_404(User, pk=pk)
+    initial_role = ("root" if user.is_superuser else
+                    "lecturer" if user.is_staff else "student")
+
+    if request.method == "POST":
+        form = UserForm(request.POST, instance=user)
+        if form.is_valid():
+            role = form.cleaned_data["role"]
+            frames = json.loads(form.cleaned_data["frames"] or "[]")
+
+            # update user flags
+            user.is_superuser = (role == "root")
+            user.is_staff     = (role in ("root", "lecturer"))
+            form.save()
+
+            # handle face template update if student + frames provided
+            if role == "student":
+                st, _ = Student.objects.get_or_create(user=user)
+                if frames:
+                    encs = []
+                    for uri in frames:
+                        # same decode logic ↓
+                        _, b64 = uri.split(",",1)
+                        img = face_recognition.load_image_file(io.BytesIO(base64.b64decode(b64)))
+                        vec = face_recognition.face_encodings(img)
+                        if vec: encs.append(vec[0])
+                    if encs:
+                        st.face_encoding = np.mean(encs,axis=0).tobytes()
+                        st.save(update_fields=["face_encoding"])
+
+            messages.success(request, "User updated.")
+            return redirect("user_list")
+    else:
+        form = UserForm(instance=user, initial={"role": initial_role})
+
+    return render(request, "accounts/user_form.html", {"form": form, "edit": True})
+
 
 # ─── Auth helpers ───────────────────────────────────────────────────────
 class FirstLoginCheckLoginView(LoginView):

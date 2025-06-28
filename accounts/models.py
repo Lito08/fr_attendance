@@ -5,11 +5,8 @@ User = get_user_model()
 
 
 class Student(models.Model):
-    """
-    Extra profile info for a student: face template + first-login flag.
-    """
     user                 = models.OneToOneField(User, on_delete=models.CASCADE)
-    face_encoding        = models.BinaryField()          # 128-D vector → bytes
+    face_encoding        = models.BinaryField(blank=True, null=True)          # 128-D vector → bytes
     must_change_password = models.BooleanField(default=True)
     created              = models.DateTimeField(auto_now_add=True)
 

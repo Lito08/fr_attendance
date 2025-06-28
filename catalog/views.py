@@ -1,15 +1,18 @@
 from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import (
+
+from .forms  import (
     ProgrammeForm, MajorForm, SubjectForm,
     OfferingForm, TrimesterForm
 )
 from .models import Programme, Major, Subject, Offering, Trimester
 
-# decorator: only superusers (root)
+
+# ─── root-only decorator (superuser) ─────────────────────
 root_only = user_passes_test(lambda u: u.is_superuser, login_url="login")
 
-# ─── index listing everything ────────────────────────────
+
+# ─── index listing everything ───────────────────────────
 @root_only
 def curriculum_index(request):
     return render(request, "catalog/curriculum_index.html", {
@@ -17,54 +20,70 @@ def curriculum_index(request):
         "majors":     Major.objects.select_related("programme"),
         "subjects":   Subject.objects.all(),
         "trimesters": Trimester.objects.all(),
-        "offerings":  Offering.objects.select_related("subject","trimester","lecturer"),
+        "offerings":  Offering.objects.select_related("subject", "trimester", "lecturer"),
     })
 
-# generic helpers ----------------------------------------------------------
-def _crud(request, queryset, form_cls, tmpl, redirect_to):
-    obj = queryset if isinstance(queryset, (Programme, Major, Subject, Offering, Trimester)) else None
+
+# ─── generic create / edit helper ───────────────────────
+def _crud(request, instance, form_cls, redirect_to="curriculum_index"):
+    """
+    Render <form>, save on POST, then redirect back to the index.
+    """
     if request.method == "POST":
-        form = form_cls(request.POST, instance=obj)
+        form = form_cls(request.POST, instance=instance)
         if form.is_valid():
             form.save()
             return redirect(redirect_to)
     else:
-        form = form_cls(instance=obj)
-    return render(request, tmpl, {"form": form})
+        form = form_cls(instance=instance)
+    return render(request, "catalog/form.html", {"form": form})
 
-# ─── create / edit views ─────────────────────────────────
+
+# ─── Programme ──────────────────────────────────────────
 @root_only
 def programme_create(request):
-    return _crud(request, Programme(), ProgrammeForm,
-                 "catalog/form.html", "curriculum_index")
+    return _crud(request, Programme(), ProgrammeForm)
 
 @root_only
 def programme_edit(request, pk):
-    return _crud(request, get_object_or_404(Programme, pk=pk), ProgrammeForm,
-                 "catalog/form.html", "curriculum_index")
+    return _crud(request, get_object_or_404(Programme, pk=pk), ProgrammeForm)
 
+
+# ─── Major ──────────────────────────────────────────────
 @root_only
 def major_create(request):
-    return _crud(request, Major(), MajorForm, "catalog/form.html", "curriculum_index")
+    return _crud(request, Major(), MajorForm)
 
 @root_only
 def major_edit(request, pk):
-    return _crud(request, get_object_or_404(Major, pk=pk), MajorForm,
-                 "catalog/form.html", "curriculum_index")
+    return _crud(request, get_object_or_404(Major, pk=pk), MajorForm)
 
+
+# ─── Subject ────────────────────────────────────────────
 @root_only
 def subject_create(request):
-    return _crud(request, Subject(), SubjectForm, "catalog/form.html", "curriculum_index")
+    return _crud(request, Subject(), SubjectForm)
 
 @root_only
 def subject_edit(request, pk):
-    return _crud(request, get_object_or_404(Subject, pk=pk), SubjectForm,
-                 "catalog/form.html", "curriculum_index")
+    return _crud(request, get_object_or_404(Subject, pk=pk), SubjectForm)
 
+
+# ─── Trimester ──────────────────────────────────────────
 @root_only
 def trimester_create(request):
-    return _crud(request, Trimester(), TrimesterForm, "catalog/form.html", "curriculum_index")
+    return _crud(request, Trimester(), TrimesterForm)
 
 @root_only
+def trimester_edit(request, pk):
+    return _crud(request, get_object_or_404(Trimester, pk=pk), TrimesterForm)
+
+
+# ─── Offering / Class ───────────────────────────────────
+@root_only
 def offering_create(request):
-    return _crud(request, Offering(), OfferingForm, "catalog/form.html", "curriculum_index")
+    return _crud(request, Offering(), OfferingForm)
+
+@root_only
+def offering_edit(request, pk):
+    return _crud(request, get_object_or_404(Offering, pk=pk), OfferingForm)

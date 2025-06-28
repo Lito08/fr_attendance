@@ -1,40 +1,92 @@
 {% extends "base.html" %}
 {% block title %}Curriculum{% endblock %}
+
 {% block content %}
 <h1 class="h4 mb-4">Curriculum Manager</h1>
 
-<h5>Programmes <a class="btn btn-sm btn-success" href="{% url 'programme_add' %}">Add</a></h5>
+<!-- ─── Programmes ───────────────────────────────────────────── -->
+<h5>Programmes
+  <a class="btn btn-sm btn-success" href="{% url 'programme_add' %}">Add</a>
+</h5>
 <ul>
   {% for p in programmes %}
-    <li><a href="{% url 'programme_edit' p.pk %}">{{ p.code }}</a> – {{ p.name }}</li>
+    <li>
+      <a href="{% url 'programme_edit' p.pk %}">{{ p.code }}</a> – {{ p.name }}
+    </li>
+  {% empty %}
+    <li class="text-muted">none yet</li>
   {% endfor %}
 </ul>
 
-<h5 class="mt-4">Majors <a class="btn btn-sm btn-success" href="{% url 'major_add' %}">Add</a></h5>
+<!-- ─── Majors ────────────────────────────────────────────────── -->
+<h5 class="mt-4">Majors
+  <a class="btn btn-sm btn-success" href="{% url 'major_add' %}">Add</a>
+</h5>
 <ul>
   {% for m in majors %}
-    <li><a href="{% url 'major_edit' m.pk %}">{{ m.code }}</a> – {{ m.name }} ({{ m.programme.code }})</li>
+    <li>
+      <a href="{% url 'major_edit' m.pk %}">{{ m.code }}</a> – {{ m.name }}
+      ({{ m.programme.code }})
+    </li>
+  {% empty %}
+    <li class="text-muted">none yet</li>
   {% endfor %}
 </ul>
 
-<h5 class="mt-4">Subjects <a class="btn btn-sm btn-success" href="{% url 'subject_add' %}">Add</a></h5>
+<!-- ─── Subjects ─────────────────────────────────────────────── -->
+<h5 class="mt-4">Subjects
+  <a class="btn btn-sm btn-success" href="{% url 'subject_add' %}">Add</a>
+</h5>
 <ul>
   {% for s in subjects %}
-    <li><a href="{% url 'subject_edit' s.pk %}">{{ s.code }}</a> – {{ s.title }}</li>
+    <li>
+      <a href="{% url 'subject_edit' s.pk %}">{{ s.code }}</a> – {{ s.title }}
+    </li>
+  {% empty %}
+    <li class="text-muted">none yet</li>
   {% endfor %}
 </ul>
 
-<h5 class="mt-4">Trimesters <a class="btn btn-sm btn-success" href="{% url 'trimester_add' %}">Add</a></h5>
+<!-- ─── Trimesters ────────────────────────────────────────────── -->
+<h5 class="mt-4">Trimesters
+  <a class="btn btn-sm btn-success" href="{% url 'trimester_add' %}">Add</a>
+</h5>
 <ul>
   {% for t in trimesters %}
-    <li>{{ t.code }} {{ t.start }} – {{ t.end }}</li>
+    <li>
+      <a href="{% url 'trimester_edit' t.pk %}">{{ t.code }}</a>
+      {{ t.start }} – {{ t.end }}
+    </li>
+  {% empty %}
+    <li class="text-muted">none yet</li>
   {% endfor %}
 </ul>
 
-<h5 class="mt-4">Classes <a class="btn btn-sm btn-success" href="{% url 'offering_add' %}">Add</a></h5>
-<ul>
-  {% for o in offerings %}
-    <li>{{ o.subject.code }} {{ o.trimester.code }} – {{ o.lecturer.get_full_name }}</li>
-  {% endfor %}
-</ul>
+<!-- ─── Classes / Offerings ──────────────────────────────────── -->
+<h5 class="mt-4">Classes
+  <a class="btn btn-sm btn-success" href="{% url 'offering_add' %}">Add</a>
+</h5>
+
+<table class="table table-sm w-auto">
+  <thead>
+    <tr>
+      <th>Subject</th><th>Trimester</th><th>Section</th><th>Lecturer</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for o in offerings %}
+      <tr>
+        <td>{{ o.subject.code }}</td>
+        <td>{{ o.trimester.code }}</td>
+        <td>{{ o.section }}</td>
+        <td>{{ o.lecturer.get_full_name|default:o.lecturer.username }}</td>
+        <td>
+          <a href="{% url 'offering_edit' o.pk %}" class="btn btn-sm btn-outline-secondary">✎</a>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="text-muted">no classes added yet</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
 {% endblock %}

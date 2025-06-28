@@ -70,10 +70,11 @@ class Offering(models.Model):
     lecturer  = models.ForeignKey(User,
                                   on_delete=models.CASCADE,
                                   limit_choices_to={"is_staff": True})
+    section   = models.CharField(max_length=20, default="")
     room      = models.CharField(max_length=50, blank=True)
 
     class Meta:
-        unique_together = ("subject", "trimester", "lecturer")
+        unique_together = ("subject", "trimester", "lecturer", "section")
 
     def __str__(self):
         return f"{self.subject.code} {self.trimester.code}"

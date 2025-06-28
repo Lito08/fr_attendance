@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+
+{% block content %}
+<h1 class="h4 mb-4">All Users</h1>
+
+<table class="table table-sm">
+  <thead>
+    <tr><th>Username</th><th>Full name</th><th>Role</th><th>Email</th></tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+      <tr>
+        <td>{{ u.username }}</td>
+        <td>{{ u.get_full_name|default:"—" }}</td>
+        <td>
+          {% if u.is_superuser %}Root
+          {% elif u.is_staff %}Lecturer
+          {% elif u.student %}Student
+          {% else %}Other{% endif %}
+        </td>
+        <td>{{ u.email }}</td>
+        <td><a href="{% url 'user_edit' u.pk %}">✎</a></td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

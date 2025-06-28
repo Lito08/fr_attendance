@@ -20,7 +20,7 @@ class SubjectForm(forms.ModelForm):
 class OfferingForm(forms.ModelForm):
     class Meta:
         model  = Offering
-        fields = ["subject", "trimester", "lecturer", "room"]
+        fields = ["subject", "trimester", "lecturer", "section", "room"]
 
 class TrimesterForm(forms.ModelForm):
     class Meta:

@@ -29,5 +29,5 @@ class TrimesterAdmin(admin.ModelAdmin):
 
 @admin.register(Offering)
 class OfferingAdmin(admin.ModelAdmin):
-    list_display = ("subject", "trimester", "lecturer", "room")
+    list_display = ("subject", "trimester", "section", "lecturer", "room")
     list_filter  = ("trimester", "lecturer")
