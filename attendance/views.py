@@ -26,6 +26,7 @@ def admin_register_user(request):
     if request.method == "POST":
         form = AdminRegisterUserForm(request.POST)
         if form.is_valid():
+            full  = form.cleaned_data["full_name"].strip()
             role   = form.cleaned_data["role"]
             email  = form.cleaned_data["email"].lower()
             frames = json.loads(form.cleaned_data["frames"])
@@ -33,6 +34,9 @@ def admin_register_user(request):
             # --- username generator ---
             prefix = "s" if role == "student" else "lec"
             username = f"{prefix}{timezone.now():%y}{uuid.uuid4().hex[:6]}"
+            
+            first, *rest = full.split()
+            last = " ".join(rest)
 
             # --- face encoding averaging ---
             enc_list = []
@@ -54,6 +58,8 @@ def admin_register_user(request):
                 username=username,
                 password=temp_pass,
                 email=email,
+                first_name=first,
+                last_name=last,
                 is_staff = role == "lecturer"
             )
             if role == "student":

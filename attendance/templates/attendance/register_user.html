@@ -1,47 +1,134 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Register User{% endblock %}
 
 {% block content %}
-<h1 class="h5 mb-4">Admin — Register new student/lecturer</h1>
+<style>
+.circle-cam{
+  width:320px; height:320px;            /* perfect square */
+  position:relative;
+  border-radius:50%;                    /* makes it a circle */
+  overflow:hidden;                      /* crop everything outside */
+}
+.circle-cam video{
+  width:100%; height:100%;
+  object-fit:cover;                     /* fill the circle */
+  transform:scale(1.15);                /* slight zoom-in so head fills view */
+}
+.circle-cam .ring{
+  position:absolute;
+  inset:0;
+  border:4px dashed #0d6efd;            /* same colour as prompt */
+  border-radius:50%;
+  pointer-events:none;
+}
+</style>
+
+<h1 class="h5 mb-4">Admin — Register new student / lecturer</h1>
 
 <form method="post" id="regForm" class="vstack gap-3">
   {% csrf_token %}
-  {{ form.role.label_tag }} {{ form.role }}
-  {{ form.email.label_tag }} {{ form.email }}
+  {{ form.full_name.label_tag }} {{ form.full_name }}
+  {{ form.role.label_tag }}     {{ form.role }}
+  {{ form.email.label_tag }}    {{ form.email }}
 
-  <!-- Webcam preview -->
-  <video id="video" width="320" height="240" autoplay muted></video>
+  <!-- Webcam preview & progress -->
+  <div class="circle-cam mx-auto mb-3">
+    <video id="video" autoplay muted></video>
+    <div class="ring"></div>        <!-- thin outline -->
+  </div>
+
   <progress id="prog" max="5" value="0" class="w-100 mb-2"></progress>
+  <h5 id="prompt" class="text-primary text-center">look left</h5>
 
-  {{ form.frames }}  <!-- hidden field -->
-  <button class="btn btn-primary">Create account</button>
+  <!-- hidden field for JSON array -->
+  {{ form.frames }}
+
+  <button class="btn btn-primary w-100">Create account</button>
 </form>
 
-<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2"></script>
-<script>
-const REQUIRED = 5;
-let frames = [];
+<!-- MediaPipe (UMD bundles) -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.min.js"></script>
 
-async function captureLoop() {
-  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-  const video = document.getElementById("video");
+<script>
+/* Head-pose liveness & frame capture */
+const REQUIRED = 5;                                  // total frames
+const steps    = ["look left","look right","look up"];
+let step = 0, frames = [];
+
+const video  = document.getElementById("video");
+const bar    = document.getElementById("prog");
+const prompt = document.getElementById("prompt");
+const hidden = document.getElementById("id_frames");
+
+/* --- helper: estimate yaw & pitch --- */
+function yawPitch(lm){
+  const yaw   = ((lm[1].x - lm[234].x)/(lm[454].x-lm[234].x))*60-30;  // ~-30…+30°
+  const pitch = (lm[1].y - lm[152].y)*150;                            // up ≈ -15°
+  return [yaw, pitch];
+}
+
+(async ()=>{
+  /* 1. start camera */
+  const stream = await navigator.mediaDevices.getUserMedia({video:true});
   video.srcObject = stream;
   await video.play();
 
-  const prog  = document.getElementById("prog");
-  const hidden = document.getElementById("id_frames");
+  /* 2. FaceMesh */
+  const fm = new FaceMesh({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
+  });
+  fm.setOptions({maxNumFaces:1,refineLandmarks:true});
 
-  while (frames.length < REQUIRED) {
-    await new Promise(r => setTimeout(r, 600));  // grab ~2 fps
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height= video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-    frames.push(canvas.toDataURL("image/jpeg"));
-    prog.value = frames.length;
+  fm.onResults(({multiFaceLandmarks})=>{
+    if(!multiFaceLandmarks.length) return;
+    const [yaw,pitch]=yawPitch(multiFaceLandmarks[0]);
+
+    const ok =
+      (step===0 && yaw<-12) ||
+      (step===1 && yaw> 12) ||
+      (step===2 && pitch<-5);
+
+    if(!ok) return;            // wait for correct pose
+
+    /* 3. snapshot this pose */
+    const c=document.createElement("canvas");
+    c.width=video.videoWidth; c.height=video.videoHeight;
+    c.getContext("2d").drawImage(video,0,0);
+    frames.push(c.toDataURL("image/jpeg"));
+    bar.value = frames.length;
+    step++;
+
+    if(step<steps.length){
+      prompt.textContent = steps[step];
+      return;
+    }
+
+    /* 4. capture two neutral frames */
+    if(frames.length < REQUIRED){
+      setTimeout(captureNeutral,400);
+      setTimeout(captureNeutral,800);
+    }
+  });
+
+  function captureNeutral(){
+    const n=document.createElement("canvas");
+    n.width=video.videoWidth; n.height=video.videoHeight;
+    n.getContext("2d").drawImage(video,0,0);
+    frames.push(n.toDataURL("image/jpeg"));
+    bar.value = frames.length;
+
+    if(frames.length === REQUIRED){
+      prompt.textContent = "✓ Ready — click Create account";
+      hidden.value = JSON.stringify(frames);
+      /* auto-submit if you prefer:
+         document.getElementById("regForm").submit(); */
+    }
   }
-  hidden.value = JSON.stringify(frames);
-}
-captureLoop();     // fire on page load
+
+  /* 5. pipe frames continuously */
+  new Camera(video,{onFrame:async()=>fm.send({image:video})}).start();
+})();
 </script>
 {% endblock %}

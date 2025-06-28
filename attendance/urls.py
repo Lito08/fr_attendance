@@ -6,6 +6,7 @@ urlpatterns = [
     path("", views.home_view, name="home"),
     path("login/", views.FirstLoginCheckLoginView.as_view(), name="login"),
     path("face_login_api/", views.face_login_api, name="face_login_api"),
+    path("register-user/", views.admin_register_user, name="register_user"),
     path("accounts/password_change/", views.PasswordChangeAndFlagView.as_view(), name="password_change"),
     path("accounts/password_change/done/", PasswordChangeDoneView.as_view(template_name="registration/password_change_done.html"), name="password_change_done"),
     

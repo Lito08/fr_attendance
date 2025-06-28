@@ -26,23 +26,72 @@
 <nav class="navbar navbar-expand-md navbar-dark bg-primary fixed-top">
   <div class="container-fluid">
     <a class="navbar-brand fw-semibold" href="/">F-Rec Attendance</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav"><span class="navbar-toggler-icon"></span></button>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
     <div class="collapse navbar-collapse" id="nav">
       <ul class="navbar-nav ms-auto align-items-md-center gap-md-2">
+
         {% if request.user.is_authenticated %}
-          <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'enrol' %}active{% endif %}" href="{% url 'enrol' %}">Enrol</a></li>
-          <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'recognise' %}active{% endif %}" href="{% url 'recognise' %}">Recognise</a></li>
-          <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}" href="{% url 'profile' %}">Profile</a></li>
-          <li class="nav-item text-white small mx-md-2">Hi&nbsp;{{ request.user.username }}</li>
+
+          {# ─── ROOT (superuser) ─────────────────────────────── #}
+          {% if request.user.is_superuser %}
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'register_user' %}active{% endif %}"
+                 href="{% url 'register_user' %}">Register&nbsp;User</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+                 href="{% url 'dashboard' %}">Admin&nbsp;Dashboard</a>
+            </li>
+
+          {# ─── LECTURER (staff but not superuser) ───────────── #}
+          {% elif request.user.is_staff %}
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+                 href="{% url 'dashboard' %}">Class&nbsp;Dashboard</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'recognise' %}active{% endif %}"
+                 href="{% url 'recognise' %}">Take&nbsp;Attendance</a>
+            </li>
+
+          {# ─── STUDENT ──────────────────────────────────────── #}
+          {% else %}
+            <!--
+              <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'enrol' %}active{% endif %}"
+                  href="{% url 'enrol' %}">Enrol&nbsp;Face</a>
+              </li>
+            -->
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'recognise' %}active{% endif %}"
+                 href="{% url 'recognise' %}">Mark&nbsp;Attendance</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+                 href="{% url 'dashboard' %}">My&nbsp;Stats</a>
+            </li>
+          {% endif %}
+
+          {# ─── Shared items (all logged-in roles) ───────────── #}
+          <li class="nav-item text-white small mx-md-2">
+            Hi&nbsp;{{ request.user.username }}
+          </li>
           <li class="nav-item">
-            <form action="{% url 'logout' %}" method="post" class="d-inline">{% csrf_token %}
+            <form action="{% url 'logout' %}" method="post" class="d-inline">
+              {% csrf_token %}
               <button class="btn btn-sm btn-light">Log&nbsp;out</button>
             </form>
           </li>
+
         {% else %}
-          <li class="nav-item"><a class="btn btn-sm btn-light" href="{% url 'login' %}">Log&nbsp;in</a></li>
+          <li class="nav-item">
+            <a class="btn btn-sm btn-light" href="{% url 'login' %}">Log&nbsp;in</a>
+          </li>
         {% endif %}
+
       </ul>
     </div>
   </div>
