@@ -1,19 +1,22 @@
 version: "3.9"
 
 services:
+  # ─────────────────────────── Django ──────────────────────────
   web:
     build:
       context: .
-      dockerfile: Dockerfile      # or Dockerfile.dev
+      dockerfile: Dockerfile           # same Dockerfile you already have
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - .:/code
-    env_file: .env
+      - .:/code                        # live-reload during dev
+    env_file: .env                     # DB creds, PUBLIC_URL, etc.
     depends_on:
       - db
-    ports:
-      - "8000:8000"
+    expose:                            # only to internal network
+      - "8000"
+    restart: always
 
+  # ────────────────────────── Postgres ─────────────────────────
   db:
     image: postgres:16-alpine
     restart: always
@@ -23,6 +26,19 @@ services:
       POSTGRES_PASSWORD: ${DB_PASS}
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  # ─────────────────────────── Nginx ───────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: fra-nginx
+    restart: always
+    ports:
+      - "443:443"                      # https://192.168.x.x/
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/ssl/fra:ro        # cert.pem & key.pem live here
+    depends_on:
+      - web
 
 volumes:
   pgdata:

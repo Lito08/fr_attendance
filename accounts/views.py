@@ -4,6 +4,7 @@ import numpy as np, face_recognition
 from django.contrib.auth import (
     get_user_model, login,
 )
+from django.contrib import messages
 from django.contrib.auth.views import LoginView, PasswordChangeView
 from django.contrib.admin.views.decorators import staff_member_required, user_passes_test
 from django.contrib.auth.decorators import login_required
@@ -13,7 +14,7 @@ from django.core.mail import send_mail
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from pyexpat.errors import messages
+
 from django.db.models import Q
 
 from attendance.utils  import find_match
@@ -70,17 +71,18 @@ def admin_register_user(request):
 
             # email credentials (console backend in dev)
             send_mail(
-                "F-Rec login",
+                "FRA System login",
                 f"Hi {full},\n\nUsername: {username}\nTemp password: {pw}\n"
-                "Login: https://attendance.youruni.edu/login/\n",
+                "Login: http://http://localhost:8000/login/\n",
                 None,
                 [email],
             )
-            return redirect("register_user")
+            messages.success(request, f"User {username} created.")
+            return redirect("user_list")
     else:
         form = AdminRegisterUserForm()
 
-    return render(request, "attendance/register_user.html", {"form": form})
+    return render(request, "accounts/register_user.html", {"form": form})
 
 @root_only
 def user_list_view(request):
@@ -158,7 +160,65 @@ def user_edit_view(request, pk):
 
     return render(request, "accounts/user_form.html", {"form": form, "edit": True})
 
+@csrf_exempt
+@login_required          # we always know which user to update
+def enrol_api(request):
+    """
+    Accepts JSON {frames:[dataURIs]} and overwrites the student's face
+    encoding for the *currently logged-in* user (admin editing a student).
+    Returns {"ok":True} or {"error":...}.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "POST only"}, status=400)
 
+    try:
+        frames = json.loads(request.body)["frames"]
+    except Exception:
+        return JsonResponse({"error": "bad payload"}, status=422)
+
+    encs = []
+    for uri in frames:
+        try:
+            _, b64 = uri.split(",", 1)
+            img = face_recognition.load_image_file(io.BytesIO(base64.b64decode(b64)))
+            fe  = face_recognition.face_encodings(img)
+            if fe:
+                encs.append(fe[0])
+        except Exception:
+            continue
+
+    if not encs:
+        return JsonResponse({"error": "no face found"}, status=422)
+
+    avg = np.mean(encs, axis=0)
+    stu, _ = Student.objects.get_or_create(user=request.user)
+    stu.face_encoding = avg.tobytes()
+    stu.must_change_password = False
+    stu.save(update_fields=["face_encoding", "must_change_password"])
+
+    return JsonResponse({"ok": True})
+
+@root_only
+def user_delete_view(request, pk):
+    """
+    Permanently delete a user account (and linked Student row if any).
+    Only super-users can call this view.
+    """
+    user = get_object_or_404(User, pk=pk)
+
+    # prevent accidental self-deletion
+    if user == request.user:
+        messages.error(request, "You cannot delete your own account.")
+        return redirect("user_list")
+
+    if request.method == "POST":
+        user.delete()
+        messages.success(request, "User deleted.")
+        return redirect("user_list")
+
+    # GET → simple confirmation page
+    return render(request, "accounts/user_confirm_delete.html",
+                  {"obj": user})
 # ─── Auth helpers ───────────────────────────────────────────────────────
 class FirstLoginCheckLoginView(LoginView):
     """

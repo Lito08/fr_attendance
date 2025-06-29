@@ -3,13 +3,17 @@ from django.contrib.auth.views import PasswordChangeDoneView, LogoutView
 from .views import (
     admin_register_user, FirstLoginCheckLoginView,
     PasswordChangeAndFlagView, face_login_api,
-    profile_view, user_list_view, user_edit_view
+    profile_view, user_list_view, user_edit_view,
+    user_delete_view, enrol_api
 )
 
 urlpatterns = [
     path("register-user/", admin_register_user, name="register_user"),
     path("users/", user_list_view, name="user_list"),
     path("users/<int:pk>/", user_edit_view,      name="user_edit"),
+    path("users/<int:pk>/delete/", user_delete_view, name="user_delete"),
+    
+    path("enrol_api/",      enrol_api,          name="enrol_api"),
 
     path("login/",  FirstLoginCheckLoginView.as_view(), name="login"),
     path("face_login_api/", face_login_api, name="face_login_api"),

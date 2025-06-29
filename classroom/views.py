@@ -19,6 +19,14 @@ from accounts.models     import Student
 from attendance.utils    import find_match
 from .forms              import SessionForm
 from .models             import ClassSession, AttendanceLog
+from django.conf import settings
+import socket
+
+def _local_ip():
+    hostname = socket.gethostname()
+    return socket.gethostbyname(hostname)
+LAN_IP = "192.168.68.114" 
+
 
 channel_layer = get_channel_layer()
 
@@ -48,7 +56,9 @@ class CreateSessionView(LecturerRequired, CreateView):
 @login_required
 def session_qr_view(request, pk):
     sess = get_object_or_404(ClassSession, pk=pk)
-    url  = f"{request.build_absolute_uri(reverse('recognise'))}?session={pk}"
+    url  = f"http://{LAN_IP}:8000{reverse('recognise')}?session={pk}"
+    # url  = f"{request.build_absolute_uri(reverse('recognise'))}?session={pk}"
+    
     buf  = io.BytesIO(); qrcode.make(url).save(buf, format="PNG")
     qr   = base64.b64encode(buf.getvalue()).decode()
     return render(request, "attendance/session_qr.html",

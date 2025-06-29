@@ -19,6 +19,7 @@
   </div>
   <div class="col-auto">
     <button class="btn btn-primary">Filter</button>
+    <a href="{% url 'register_user' %}" class="btn btn-success btn-sm">+ Add User</a>
   </div>
 </form>
 
@@ -66,9 +67,21 @@
           {% else %}—{% endif %}
         </td>
         <td>{{ u.email }}</td>
-        <td>{% if u.student and u.student.face_encoding %}✅{% else %}❌{% endif %}</td>
         <td>
-          <a href="{% url 'user_edit' u.pk %}" class="btn btn-sm btn-outline-secondary">✎</a>
+          {% if u.student and u.student.face_encoding|length %}
+              ✅
+          {% else %}
+              ❌
+          {% endif %}
+        </td>
+        <td class="text-end">
+          <a href="{% url 'user_edit' u.pk %}"  class="btn btn-sm btn-outline-secondary me-1">✎</a>
+
+          <form action="{% url 'user_delete' u.pk %}" method="post" class="d-inline"
+                onsubmit="return confirm('Delete {{ u.username }}?');">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-outline-danger">🗑</button>
+          </form>
         </td>
       </tr>
     {% empty %}
