@@ -19,15 +19,12 @@ from accounts.models     import Student
 from attendance.utils    import find_match
 from .forms              import SessionForm
 from .models             import ClassSession, AttendanceLog
-from django.conf import settings
+
+from django.contrib import messages
+from django.urls import reverse
 import socket
 
-def _local_ip():
-    hostname = socket.gethostname()
-    return socket.gethostbyname(hostname)
-LAN_IP = "192.168.68.114" 
-
-
+LAN_IP = "192.168.68.114"
 channel_layer = get_channel_layer()
 
 # ─── mixin for lecturer-only views ───────────────────────
@@ -56,14 +53,62 @@ class CreateSessionView(LecturerRequired, CreateView):
 @login_required
 def session_qr_view(request, pk):
     sess = get_object_or_404(ClassSession, pk=pk)
-    url  = f"http://{LAN_IP}:8000{reverse('recognise')}?session={pk}"
-    # url  = f"{request.build_absolute_uri(reverse('recognise'))}?session={pk}"
-    
-    buf  = io.BytesIO(); qrcode.make(url).save(buf, format="PNG")
-    qr   = base64.b64encode(buf.getvalue()).decode()
-    return render(request, "attendance/session_qr.html",
-                  {"session": sess, "qr": qr})
 
+    # absolute HTTPS URL, e.g. https://192.168.68.114/checkin/<uuid>/
+    url = request.build_absolute_uri(
+        reverse("session_checkin", args=[pk])
+    )
+
+    buf = io.BytesIO()
+    qrcode.make(url).save(buf, format="PNG")
+    qr = base64.b64encode(buf.getvalue()).decode()
+
+    return render(request, "attendance/session_qr.html",
+                  {"session": sess, "qr": qr, "url": url})
+
+@login_required
+def session_checkin_view(request, pk):
+    """
+    GET  /checkin/<session-uuid>/
+
+    • must be a student
+    • create one AttendanceLog row per student+session
+    • second (or later) scans do NOT increment the head-count,
+      but show a gentle “already present” message.
+    """
+    sess = get_object_or_404(ClassSession, pk=pk)
+
+    # ----- only students allowed ------------------------------------------------
+    try:
+        student = request.user.student
+    except AttributeError:
+        return render(request, "attendance/not_student.html", status=403)
+
+    # ----- create-or-fetch log row ---------------------------------------------
+    log, created = AttendanceLog.objects.get_or_create(
+        session  = sess,
+        student  = student,
+        defaults = {"verified": False, "latency_ms": 0},
+    )
+
+    if created:
+        # 1st scan → notify live roster
+        async_to_sync(channel_layer.group_send)(
+            f"sess_{sess.pk}",
+            {"type": "attendance.event",
+             "payload": {"action": "add",
+                         "user": student.user.username}}
+        )
+        msg = "✓ Your attendance has been recorded."
+    else:
+        # duplicate scan → no counter bump
+        msg = "You’re already marked present for this class."
+
+    messages.success(request, msg)
+
+    # tiny thank-you page (auto-redirect after 2 s)
+    return render(request, "attendance/checkin_done.html",
+                  {"session": sess, "duplicate": not created})
 
 # ─── live roster page ───────────────────────────────────
 class SessionLiveView(LecturerRequired, DetailView):

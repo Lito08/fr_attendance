@@ -13,6 +13,7 @@ DEBUG = True
 PUBLIC_URL = os.getenv("PUBLIC_URL", "http://localhost:8000")
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 _raw = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 CSRF_TRUSTED_ORIGINS = [u for u in _raw.replace(",", " ").split() if u]

@@ -3,52 +3,33 @@
 {% block title %}{% if edit %}Edit{% else %}Add{% endif %} User{% endblock %}
 
 {% block content %}
-<style>
-/* — same circular preview & dashed ring as register_user — */
-.circle-cam{
-  width:320px;height:320px;position:relative;border-radius:50%;overflow:hidden
-}
-.circle-cam video{
-  width:100%;height:100%;object-fit:cover;transform:scale(1.15)
-}
-.circle-cam .ring{
-  position:absolute;inset:0;border:4px dashed #0d6efd;border-radius:50%;pointer-events:none
-}
-</style>
+<style>.circle-cam{width:320px;height:320px;position:relative;border-radius:50%;overflow:hidden}
+.circle-cam video{width:100%;height:100%;object-fit:cover;transform:scale(1.15)}
+.circle-cam .ring{position:absolute;inset:0;border:4px dashed #0d6efd;border-radius:50%;pointer-events:none}</style>
 
 <h1 class="h5 mb-3">{% if edit %}Edit{% else %}Add{% endif %} User</h1>
 
 <form method="post" class="vstack gap-3" style="max-width:480px">
   {% csrf_token %}
-  {{ form.non_field_errors }}
-  {{ form.as_p }}                      {# full_name, role, email … #}
+  {{ form.as_p }}
 
-  <!-- ─── optional face re-enrol ─────────────────────────────── -->
   <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
       <span>Re-enrol face <small class="text-muted">(optional)</small></span>
-      <button type="button" id="startBtn"
-              class="btn btn-sm btn-primary">
-        Start&nbsp;capture
-      </button>
+      <button type="button" id="startBtn" class="btn btn-sm btn-primary">Start&nbsp;capture</button>
     </div>
-
     <div class="card-body text-center">
       <div class="circle-cam mx-auto">
-        <video id="video" autoplay muted playsinline class="d-none"></video>
+        <video id="video" class="d-none" autoplay muted playsinline></video>
         <div class="ring"></div>
-        <!-- placeholder before camera starts -->
-        <div id="placeholder"
-             class="bg-secondary bg-opacity-25 w-100 h-100 rounded
-                    d-flex align-items-center justify-content-center">
+        <div id="ph" class="w-100 h-100 d-flex align-items-center justify-content-center
+                            bg-secondary bg-opacity-25 rounded">
           <span class="small text-muted">camera off</span>
         </div>
       </div>
-
-      <progress id="prog" max="5" value="0" class="w-100 my-2"></progress>
+      <progress id="prog" max="12" value="0" class="w-100 my-2"></progress>
       <h5 id="prompt" class="text-primary text-center"></h5>
-
-      {{ form.frames }}   {# hidden JSON field (id="id_frames") #}
+      {{ form.frames }}
     </div>
   </div>
 
@@ -56,91 +37,37 @@
   <a href="{% url 'user_list' %}" class="btn btn-link">Back</a>
 </form>
 
-<!-- MediaPipe (same as register page) -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.min.js"></script>
-
 <script>
-/* ===============================================================
-   IDENTICAL logic to register_user.html (LEFT → RIGHT → UP poses)
-   =============================================================== */
-const REQUIRED = 5;                                  // total frames
-const steps    = ["look left","look right","look up"];
-let step = 0, frames = [];
+const FRAMES_PER_POSE=3,NEUTRAL=3,steps=["face camera","look left","look right"];
+let pose=0,frames=[];
+const v=document.getElementById("video"),bar=document.getElementById("prog"),
+      prompt=document.getElementById("prompt"),hidden=document.getElementById("id_frames");
 
-const video = document.getElementById("video");
-const bar   = document.getElementById("prog");
-const prompt= document.getElementById("prompt");
-const hidden= document.getElementById("id_frames");
+document.getElementById("startBtn").onclick=async()=>{
+  document.getElementById("ph").classList.add("d-none");v.classList.remove("d-none");
+  prompt.textContent=steps[0];
+  v.srcObject=await navigator.mediaDevices.getUserMedia({video:true});await v.play();
 
-/* yaw / pitch helper */
-function yawPitch(lm){
-  const yaw   = ((lm[1].x - lm[234].x)/(lm[454].x-lm[234].x))*60-30;
-  const pitch = (lm[1].y - lm[152].y)*150;
-  return [yaw, pitch];
-}
-
-/* clicked Start → swap placeholder, start camera & FaceMesh */
-document.getElementById("startBtn").onclick = async ()=>{
-  document.getElementById("placeholder").classList.add("d-none");
-  video.classList.remove("d-none");
-  prompt.textContent = "look left";
-
-  /* 1. webcam */
-  video.srcObject = await navigator.mediaDevices.getUserMedia({video:true});
-  await video.play();
-
-  /* 2. FaceMesh */
-  const fm = new FaceMesh({
-    locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
-  });
+  const fm=new FaceMesh({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`});
   fm.setOptions({maxNumFaces:1,refineLandmarks:true});
-
   fm.onResults(({multiFaceLandmarks})=>{
-    if(!multiFaceLandmarks.length) return;
-    const [yaw,pitch]=yawPitch(multiFaceLandmarks[0]);
+    if(!multiFaceLandmarks.length)return;
+    const y=((lm=multiFaceLandmarks[0])=>((lm[1].x-lm[234].x)/(lm[454].x-lm[234].x))*60-30)();
 
-    const ok =
-      (step===0 && yaw<-12) ||
-      (step===1 && yaw> 12) ||
-      (step===2 && pitch<-5);
+    const ok=(pose===0)||(pose===1&&y<-12)||(pose===2&&y>12);
+    if(!ok)return;
 
-    if(!ok) return;
-
-    /* snapshot */
-    const c=document.createElement("canvas"), ctx=c.getContext("2d");
-    c.width=video.videoWidth; c.height=video.videoHeight;
-    ctx.drawImage(video,0,0);
-    frames.push(c.toDataURL("image/jpeg"));
-    bar.value = frames.length;
-    step++;
-
-    if(step<steps.length){
-      prompt.textContent = steps[step];
-      return;
-    }
-
-    /* neutral frames until 5 total */
-    if(frames.length<REQUIRED){
-      setTimeout(neutral,400);
-      setTimeout(neutral,800);
-    }
+    snap(FRAMES_PER_POSE);pose++;
+    if(pose<steps.length){prompt.textContent=steps[pose];}
+    else{snap(NEUTRAL);prompt.textContent="✓ Ready — save";hidden.value=JSON.stringify(frames);}
   });
-
-  function neutral(){
-    const cn=document.createElement("canvas"), cxn=cn.getContext("2d");
-    cn.width=video.videoWidth; cn.height=video.videoHeight;
-    cxn.drawImage(video,0,0);
-    frames.push(cn.toDataURL("image/jpeg"));
-    bar.value = frames.length;
-
-    if(frames.length===REQUIRED){
-      prompt.textContent = "✓ Ready — click Save";
-      hidden.value = JSON.stringify(frames);
-    }
-  }
-
-  new Camera(video,{onFrame:async()=>fm.send({image:video})}).start();
+  new Camera(v,{onFrame:async()=>fm.send({image:v})}).start();
 };
+function snap(n){const c=document.createElement("canvas"),ctx=c.getContext("2d");
+c.width=v.videoWidth;c.height=v.videoHeight;
+for(let i=0;i<n;i++){ctx.drawImage(v,0,0);frames.push(c.toDataURL("image/jpeg"));}
+bar.value=frames.length;}
 </script>
 {% endblock %}

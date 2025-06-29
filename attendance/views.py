@@ -15,7 +15,6 @@ def home_view(request):
         return redirect("login")
     return redirect("dashboard")
 
-
 # ─── Dashboard (7-day chart + today’s list) ─────────────
 @login_required
 def dashboard_view(request):
@@ -38,8 +37,8 @@ def dashboard_view(request):
         "rows": rows,
         "labels": [d.strftime("%d %b") for d in labels],
         "values": values,
+        "total_week": sum(values),
     })
-
 
 # ─── CSV export for today ───────────────────────────────
 @login_required

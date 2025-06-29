@@ -4,24 +4,9 @@
 
 {% block content %}
 <style>
-.circle-cam{
-  width:320px; height:320px;            /* perfect square */
-  position:relative;
-  border-radius:50%;                    /* makes it a circle */
-  overflow:hidden;                      /* crop everything outside */
-}
-.circle-cam video{
-  width:100%; height:100%;
-  object-fit:cover;                     /* fill the circle */
-  transform:scale(1.15);                /* slight zoom-in so head fills view */
-}
-.circle-cam .ring{
-  position:absolute;
-  inset:0;
-  border:4px dashed #0d6efd;            /* same colour as prompt */
-  border-radius:50%;
-  pointer-events:none;
-}
+.circle-cam{width:320px;height:320px;position:relative;border-radius:50%;overflow:hidden}
+.circle-cam video{width:100%;height:100%;object-fit:cover;transform:scale(1.15)}
+.circle-cam .ring{position:absolute;inset:0;border:4px dashed #0d6efd;border-radius:50%;pointer-events:none}
 </style>
 
 <h1 class="h5 mb-4">Admin — Register new student / lecturer</h1>
@@ -32,103 +17,77 @@
   {{ form.role.label_tag }}     {{ form.role }}
   {{ form.email.label_tag }}    {{ form.email }}
 
-  <!-- Webcam preview & progress -->
+  <!-- Webcam + circle overlay -->
   <div class="circle-cam mx-auto mb-3">
-    <video id="video" autoplay muted></video>
-    <div class="ring"></div>        <!-- thin outline -->
+    <video id="video" autoplay muted playsinline></video>
+    <div class="ring"></div>
   </div>
 
-  <progress id="prog" max="5" value="0" class="w-100 mb-2"></progress>
-  <h5 id="prompt" class="text-primary text-center">look left</h5>
+  <progress id="prog" max="12" value="0" class="w-100 mb-2"></progress>
+  <h5 id="prompt" class="text-primary text-center"></h5>
 
-  <!-- hidden field for JSON array -->
-  {{ form.frames }}
+  {{ form.frames }}   {# hidden JSON #}
 
   <button class="btn btn-primary w-100">Create account</button>
 </form>
 
-<!-- MediaPipe (UMD bundles) -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.min.js"></script>
 
 <script>
-/* Head-pose liveness & frame capture */
-const REQUIRED = 5;                                  // total frames
-const steps    = ["look left","look right","look up"];
-let step = 0, frames = [];
+/* ─── 3 poses × 3 frames + 3 neutral  = 12 total ─────────────────── */
+const FRAMES_PER_POSE = 3, NEUTRAL = 3;
+const steps = ["face camera","look left","look right"];
+let pose = 0, frames = [];
 
-const video  = document.getElementById("video");
-const bar    = document.getElementById("prog");
-const prompt = document.getElementById("prompt");
-const hidden = document.getElementById("id_frames");
+const v=document.getElementById("video"),
+      bar=document.getElementById("prog"),
+      prompt=document.getElementById("prompt"),
+      hidden=document.getElementById("id_frames");
 
-/* --- helper: estimate yaw & pitch --- */
-function yawPitch(lm){
-  const yaw   = ((lm[1].x - lm[234].x)/(lm[454].x-lm[234].x))*60-30;  // ~-30…+30°
-  const pitch = (lm[1].y - lm[152].y)*150;                            // up ≈ -15°
-  return [yaw, pitch];
-}
+prompt.textContent = steps[0];
+
+/* yaw helper */
+const yaw = lm=>((lm[1].x-lm[234].x)/(lm[454].x-lm[234].x))*60-30;
 
 (async ()=>{
-  /* 1. start camera */
-  const stream = await navigator.mediaDevices.getUserMedia({video:true});
-  video.srcObject = stream;
-  await video.play();
+  v.srcObject = await navigator.mediaDevices.getUserMedia({video:true});
+  await v.play();
 
-  /* 2. FaceMesh */
-  const fm = new FaceMesh({
-    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
-  });
+  const fm=new FaceMesh({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`});
   fm.setOptions({maxNumFaces:1,refineLandmarks:true});
 
   fm.onResults(({multiFaceLandmarks})=>{
     if(!multiFaceLandmarks.length) return;
-    const [yaw,pitch]=yawPitch(multiFaceLandmarks[0]);
+    const y=yaw(multiFaceLandmarks[0]);
 
     const ok =
-      (step===0 && yaw<-12) ||
-      (step===1 && yaw> 12) ||
-      (step===2 && pitch<-5);
+      (pose===0) ||                          // front
+      (pose===1 && y<-12) ||                 // left
+      (pose===2 && y> 12);                   // right
+    if(!ok) return;
 
-    if(!ok) return;            // wait for correct pose
-
-    /* 3. snapshot this pose */
-    const c=document.createElement("canvas");
-    c.width=video.videoWidth; c.height=video.videoHeight;
-    c.getContext("2d").drawImage(video,0,0);
-    frames.push(c.toDataURL("image/jpeg"));
-    bar.value = frames.length;
-    step++;
-
-    if(step<steps.length){
-      prompt.textContent = steps[step];
-      return;
-    }
-
-    /* 4. capture two neutral frames */
-    if(frames.length < REQUIRED){
-      setTimeout(captureNeutral,400);
-      setTimeout(captureNeutral,800);
+    snap(FRAMES_PER_POSE);                  // grab 3 frames
+    pose++;
+    if(pose<steps.length){
+      prompt.textContent = steps[pose];
+    }else{
+      snap(NEUTRAL);                        // 3 extra
+      prompt.textContent = "✓ Ready — submit";
+      hidden.value = JSON.stringify(frames);
     }
   });
 
-  function captureNeutral(){
-    const n=document.createElement("canvas");
-    n.width=video.videoWidth; n.height=video.videoHeight;
-    n.getContext("2d").drawImage(video,0,0);
-    frames.push(n.toDataURL("image/jpeg"));
-    bar.value = frames.length;
-
-    if(frames.length === REQUIRED){
-      prompt.textContent = "✓ Ready — click Create account";
-      hidden.value = JSON.stringify(frames);
-      /* auto-submit if you prefer:
-         document.getElementById("regForm").submit(); */
-    }
-  }
-
-  /* 5. pipe frames continuously */
-  new Camera(video,{onFrame:async()=>fm.send({image:video})}).start();
+  new Camera(v,{onFrame:async()=>fm.send({image:v})}).start();
 })();
+
+function snap(n){
+  const c=document.createElement("canvas"),ctx=c.getContext("2d");
+  c.width=v.videoWidth;c.height=v.videoHeight;
+  for(let i=0;i<n;i++){
+    ctx.drawImage(v,0,0);frames.push(c.toDataURL("image/jpeg"));
+  }
+  bar.value = frames.length;
+}
 </script>
 {% endblock %}

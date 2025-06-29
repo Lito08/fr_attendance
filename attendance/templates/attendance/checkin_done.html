@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Attendance{% endblock %}
+{% block content %}
+<div class="text-center my-5">
+  {% if duplicate %}
+    <h1 class="display-6 text-info">Already marked ✓</h1>
+    <p class="lead">No need to scan again.</p>
+  {% else %}
+    <h1 class="display-6 text-success">Attendance recorded ✓</h1>
+    <p class="lead">Thank you. You may hand the phone to the next person.</p>
+  {% endif %}
+</div>
+<script>setTimeout(()=>location.href='{% url "dashboard" %}', 2000);</script>
+{% endblock %}

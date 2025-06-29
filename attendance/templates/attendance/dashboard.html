@@ -2,35 +2,102 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<h1 class="h4 mb-4">Attendance – last 7 days</h1>
+<h1 class="h4 mb-4">Attendance overview</h1>
 
-<table class="table w-auto">
-  <thead><tr><th>Date</th><th>Scans</th></tr></thead>
-  <tbody>
-  {% for date,total in rows %}
-    <tr>
-      <td>{{ date|date:"d M" }}</td>
-      <td>{{ total }}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+<div class="row g-4">
 
-<h4 class="mt-5">Today ({{ logs_today|length }})</h4>
-<table class="table table-sm">
-  <thead><tr><th>User</th><th>Time</th><th>Latency</th></tr></thead>
-  <tbody>
-  {% for row in logs_today %}
-    <tr>
-      <td>{{ row.student.user.username }}</td>
-      <td>{{ row.timestamp|time:"H:i:s" }}</td>
-      <td>{{ row.latency_ms }} ms</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+  <!-- Quick-stats cards -->
+  <div class="col-sm-6 col-lg-3">
+    <div class="card shadow-sm text-center border-0">
+      <div class="card-body">
+        <h6 class="text-muted mb-1">Today</h6>
+        <p class="display-6 fw-semibold mb-0">{{ logs_today|length }}</p>
+      </div>
+    </div>
+  </div>
 
-<a href="{% url 'export_today_csv' %}" class="btn btn-outline-secondary">
-  Export today’s CSV
-</a>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card shadow-sm text-center border-0">
+      <div class="card-body">
+        <h6 class="text-muted mb-1">Past&nbsp;7&nbsp;days</h6>
+        <p class="display-6 fw-semibold mb-0">
+          {{ total_week }}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7-day bar chart -->
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm h-100 border-0">
+      <div class="card-body">
+        <h6 class="text-muted mb-3">Daily scans</h6>
+        <canvas id="barChart" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Today’s log table -->
+<div class="card shadow-sm border-0 mt-5">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>Today ({{ logs_today|length }})</span>
+    <a href="{% url 'export_today_csv' %}" class="btn btn-sm btn-outline-secondary">
+      ⬇ Export CSV
+    </a>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Matric&nbsp;ID</th>
+          <th>Name</th>
+          <th>Time</th>
+          <th class="text-end">Latency&nbsp;(ms)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in logs_today %}
+          <tr>
+            <td>{{ row.student.user.username }}</td>
+            <td>{{ row.student.user.get_full_name|default:"—" }}</td>
+            <td>{{ row.timestamp|time:"H:i:s" }}</td>
+            <td class="text-end">{{ row.latency_ms }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="text-center text-muted py-4">— no scans yet —</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(() => {
+  const ctx    = document.getElementById('barChart');
+  const labels = {{ labels|safe }};   // e.g. ["22 Jun", …]
+  const data   = {{ values|safe }};   // e.g. [3,0,7,…]
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        borderRadius: 4,
+        backgroundColor: '#0d6efd55',   // Bootstrap primary w/ transparency
+      }]
+    },
+    options: {
+      plugins: { legend: false },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+      }
+    }
+  });
+})();
+</script>
 {% endblock %}

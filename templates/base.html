@@ -45,11 +45,11 @@
           {% elif request.user.is_staff %}
             <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'session_new' %}active{% endif %}" href="{% url 'session_new' %}">Start&nbsp;Class</a></li>
             <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">Class&nbsp;Dashboard</a></li>
-            <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'recognise' %}active{% endif %}" href="{% url 'recognise' %}">Scanner</a></li>
+            <!-- <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'recognise' %}active{% endif %}" href="{% url 'recognise' %}">Scanner</a></li> -->
 
           {# ─── STUDENT ──────────────────────────────── #}
           {% else %}
-            <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'recognise' %}active{% endif %}" href="{% url 'recognise' %}">Mark&nbsp;Attendance</a></li>
+            <!-- <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'recognise' %}active{% endif %}" href="{% url 'recognise' %}">Mark&nbsp;Attendance</a></li> -->
             <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">My&nbsp;Stats</a></li>
           {% endif %}
 
